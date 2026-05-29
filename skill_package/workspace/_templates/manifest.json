@@ -1,0 +1,9 @@
+{
+  "db_alias": "{客户库别名}",
+  "config": "config.json",
+  "dataset": "dataset/",
+  "frontend": "frontend/",
+  "projects": [],
+  "knowledge_files": [],
+  "updated_at": "{YYYY-MM-DD}"
+}

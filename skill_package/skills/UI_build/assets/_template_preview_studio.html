@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>预览</title>
+</head>
+<body>
+  <p id="apiStatus">检测 API…</p>
+  <script>
+/* === FULLSTACK_API_BEGIN — 由 skill 工具维护，勿删 === */
+const API_BASE = (window.__STUDIO_API_BASE__ || 'http://127.0.0.1:8000/api');
+
+async function apiGet(path) {
+  const r = await fetch(API_BASE + path);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function apiPost(path, body) {
+  const r = await fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function apiPut(path, body) {
+  const r = await fetch(API_BASE + path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function apiDel(path) {
+  const r = await fetch(API_BASE + path, { method: 'DELETE' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function checkBackendHealth() {
+  const el = document.getElementById('apiStatus');
+  try {
+    const d = await apiGet('/health');
+    if (d && d.ok) {
+      if (el) { el.textContent = 'API 已连接'; el.className = 'status online'; }
+      return true;
+    }
+  } catch (e) {}
+  if (el) {
+    el.textContent = 'API 未连接（' + API_BASE + '）';
+    el.className = 'status';
+  }
+  return false;
+}
+/* === FULLSTACK_API_END === */
+
+    // 业务逻辑：只用 apiGet('/your-route')，路径来自 get_fullstack_api_contract.backend_routes
+    checkBackendHealth();
+  </script>
+</body>
+</html>

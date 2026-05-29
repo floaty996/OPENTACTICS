@@ -1,0 +1,8 @@
+{
+  "api_key": "sk-你的DeepSeek密钥",
+  "base_url": "https://api.deepseek.com",
+  "model": "deepseek-chat",
+  "max_tool_rounds": 50,
+  "max_tokens": 8192,
+  "timeout_seconds": 300
+}

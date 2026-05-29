@@ -1,0 +1,7 @@
+config/deepseek.json
+config/studio_state.json
+skill_package/workspace/*/config.json
+skill_package/config/database/*.json
+!skill_package/config/database/*.example
+!skill_package/config/database/example.*
+config/database.json

@@ -1,0 +1,11 @@
+{
+  "db_alias": "customer_acme",
+  "db_type": "mysql",
+  "host": "127.0.0.1",
+  "port": 3306,
+  "user": "app_user",
+  "password": "请填写",
+  "database": "biz_db",
+  "file_path": null,
+  "note": "复制为 customer_acme.json 并由 save_database_config 工具写入；勿提交含真实密码的文件"
+}

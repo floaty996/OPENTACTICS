@@ -1,0 +1,12 @@
+{
+  "project_name": "{项目名}",
+  "db_alias": "{客户库别名}",
+  "has_database_connection": true,
+  "stack": "fastapi",
+  "default_port": 8000,
+  "api_prefix": "/api",
+  "linked_frontend": "{关联的前端工程名，与 frontend/ 下目录一致}",
+  "cors_origins": ["http://127.0.0.1:8765", "http://localhost:5173"],
+  "created_at": "{YYYY-MM-DD}",
+  "description": "接库 REST API，供 frontend 拉取真实数据"
+}

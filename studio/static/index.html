@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Skill Studio</title>
+  <link rel="stylesheet" href="/static/app.css?v=72" />
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div class="header-row">
+        <div class="header-brand">
+          <h1 data-i18n="app.title">Skill Studio</h1>
+          <p class="subtitle" data-i18n="app.subtitle">Configure MySQL (multi-source + target) and DeepSeek, then chat with agents</p>
+        </div>
+        <div class="lang-switch" role="group" data-i18n-aria-label="lang.switch" aria-label="Language">
+          <button type="button" class="lang-btn" data-lang="en" aria-pressed="true" data-i18n="lang.en">EN</button>
+          <button type="button" class="lang-btn" data-lang="zh" aria-pressed="false" data-i18n="lang.zh">中文</button>
+        </div>
+      </div>
+    </header>
+
+    <section id="project-panel" class="card hidden project-panel">
+      <div class="project-panel-header">
+        <div class="panel-head project-panel-head">
+          <h2 data-i18n="project.selectSaas">Select saas</h2>
+          <div class="project-panel-head-actions">
+            <button type="button" class="project-new-btn" id="new-project-btn" data-i18n="project.newSaas">New saas</button>
+          </div>
+        </div>
+        <p class="hint small project-panel-hint" data-i18n="project.hint">Click a card to open chat; use Edit to change connection; Delete permanently removes the saas workspace.</p>
+        <button type="button" class="btn btn-text project-skills-link" id="open-skills-from-projects" data-i18n="project.viewSkills">Browse Skill library</button>
+      </div>
+      <div class="project-panel-scroll">
+        <div id="project-list" class="project-list"></div>
+        <p id="project-list-empty" class="hint hidden" data-i18n="project.empty">No configured saas yet. Create one to get started.</p>
+      </div>
+    </section>
+
+    <section id="setup-panel" class="card hidden">
+      <div class="panel-head">
+        <h2 id="setup-title" data-i18n="setup.newTitle">New saas</h2>
+        <button type="button" class="btn btn-text" id="back-to-projects-btn" data-i18n="setup.back">← Back to saas list</button>
+      </div>
+      <p class="hint" id="setup-hint" data-i18n-html="setup.hintNewHtml">
+        <strong>Source and target databases are optional.</strong> If target is empty, backend data is stored in local SQLite; with MySQL, sources are read-only and target is writable.
+      </p>
+      <form id="setup-form" class="form-grid">
+        <fieldset class="fieldset">
+          <legend data-i18n="setup.workspace">Workspace</legend>
+          <label>
+            <span data-i18n="setup.dbAlias">db_alias (saas id)</span>
+            <input name="db_alias" required placeholder="hr_project" pattern="[A-Za-z][A-Za-z0-9_-]{0,63}" />
+          </label>
+        </fieldset>
+
+        <fieldset class="fieldset span-2">
+          <legend data-i18n="setup.mysqlServer">MySQL server (when source or target is configured)</legend>
+          <div class="row-2">
+            <label><span data-i18n="setup.host">Host</span> <input name="host" value="127.0.0.1" /></label>
+            <label><span data-i18n="setup.port">Port</span> <input name="port" type="number" value="3306" /></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="fieldset span-2 fieldset-source-db">
+          <legend data-i18n="setup.sourceData">Source data (optional: MySQL DBs / xlsx·csv files)</legend>
+          <p class="hint small source-db-mode-hint" data-i18n="setup.sourceModeHint">Use MySQL only, files only, or both; agents read and summarize into dataset/ knowledge docs.</p>
+          <div class="row-2 source-db-account">
+            <label><span data-i18n="setup.username">Username</span> <input name="user" placeholder="readonly_user" /></label>
+            <label><span data-i18n="setup.password">Password</span> <input name="password" type="password" autocomplete="new-password" data-i18n-placeholder="setup.passwordPlaceholder" placeholder="Fill when MySQL is configured" /></label>
+          </div>
+          <p class="hint small source-db-account-hint" data-i18n="setup.sourceAccountHint">Source account should be read-only; leave blank if no MySQL.</p>
+          <div class="source-db-list-section">
+            <div class="source-db-toolbar">
+              <span class="source-db-col-label" data-i18n="setup.mysqlDbName">MySQL database name</span>
+              <span class="source-db-col-label source-db-col-action" data-i18n="common.remove">Remove</span>
+            </div>
+            <div id="source-db-list" class="source-db-list"></div>
+            <button type="button" class="btn btn-outline" id="add-source-db" data-i18n="setup.addSourceDb">+ Add source DB</button>
+          </div>
+          <div class="source-files-section">
+            <div class="source-files-field">
+              <div class="source-files-label-line">
+                <span class="source-files-title" data-i18n="setup.sourceFiles">Source files (xlsx / csv)</span>
+                <label class="source-file-picker btn-text">
+                  <span data-i18n="setup.chooseFiles">Choose files</span>
+                  <input type="file" id="source-file-input" accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" multiple hidden />
+                </label>
+              </div>
+              <div id="source-file-list" class="source-file-list"></div>
+              <p id="source-file-empty" class="hint small source-file-empty" data-i18n="setup.sourceFileEmpty">No source files uploaded; max 20MB per file.</p>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="fieldset span-2">
+          <legend data-i18n="setup.targetDb">Target database (optional — local SQLite if empty)</legend>
+          <label>
+            <span data-i18n="setup.targetDbName">Target DB name</span>
+            <input name="target_database" data-i18n-placeholder="setup.targetDbPlaceholder" placeholder="Leave empty → saas local data/app.db" />
+          </label>
+          <p class="hint small" data-i18n="setup.targetDbHint">DDL/DML only on this MySQL DB; must not match a source name. Empty uses workspace SQLite.</p>
+          <div class="row-2">
+            <label><span data-i18n="setup.targetUser">Target username (optional)</span>
+              <input name="target_user" data-i18n-placeholder="setup.targetUserPlaceholder" placeholder="Leave empty to use source username" />
+            </label>
+            <label><span data-i18n="setup.targetPassword">Target password (optional)</span>
+              <input name="target_password" type="password" data-i18n-placeholder="setup.targetPasswordPlaceholder" placeholder="Leave empty to use source password" autocomplete="new-password" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="fieldset span-2">
+          <legend data-i18n="setup.deepseek">DeepSeek API</legend>
+          <label><span data-i18n="setup.apiKey">API Key</span> <input name="deepseek_api_key" type="password" autocomplete="off" data-i18n-placeholder="setup.apiKeyPlaceholder" placeholder="Leave blank if already configured" /></label>
+          <div class="row-2">
+            <label><span data-i18n="setup.baseUrl">Base URL</span> <input name="deepseek_base_url" value="https://api.deepseek.com" /></label>
+            <label><span data-i18n="setup.model">Model</span> <input name="deepseek_model" value="deepseek-chat" /></label>
+          </div>
+        </fieldset>
+
+        <div class="actions span-2">
+          <label class="checkbox">
+            <input name="test_connection" type="checkbox" checked />
+            <span data-i18n="setup.testConnection">Test MySQL connection before save</span>
+          </label>
+          <button type="submit" class="btn primary" id="setup-btn" data-i18n="setup.saveEnter">Save & enter</button>
+        </div>
+        <p id="setup-error" class="error hidden span-2"></p>
+      </form>
+    </section>
+
+    <section id="main-panel" class="hidden">
+      <div class="status-bar card status-bar-row">
+        <div class="status-bar-text" id="status-bar-text"></div>
+        <button type="button" class="btn ghost btn-sm" id="reconfigure-btn" data-i18n="main.reconfigure">Reconfigure</button>
+      </div>
+      <div class="main-grid">
+        <aside class="card conv-history-sidebar" data-i18n-aria-label="chat.history" aria-label="History">
+          <div class="conv-history-sidebar-head">
+            <h3 data-i18n="chat.history">History</h3>
+            <button type="button" class="btn ghost btn-sm" id="new-chat-btn" data-i18n="chat.new" data-i18n-title="chat.new" title="New chat">New chat</button>
+          </div>
+          <ul id="conv-history-list" class="conv-history-list"></ul>
+          <p id="conv-history-empty" class="hint small conv-history-empty hidden" data-i18n="chat.emptyHistory">No conversations yet.</p>
+        </aside>
+        <main class="card chat-panel">
+          <div class="chat-panel-head">
+            <span class="chat-panel-title" id="chat-conv-title" data-i18n="chat.title">Chat</span>
+            <div class="chat-head-actions">
+              <button type="button" class="btn ghost btn-sm" id="skills-btn" data-i18n="chat.skillsBtn" data-i18n-title="chat.skillsBtnTitle" title="Skill library">Skill library</button>
+              <button type="button" class="btn ghost btn-sm" id="system-preview-btn" data-i18n="chat.previewBtn" data-i18n-title="chat.previewBtnTitle" title="System preview">System preview</button>
+              <button type="button" class="btn ghost btn-sm" id="artifacts-btn" data-i18n="chat.artifactsBtn" data-i18n-title="chat.artifactsBtnTitle" title="Workspace files">Workspace files</button>
+              <button type="button" class="btn ghost btn-sm hidden has-runtime-alert-slot" id="back-to-chat-btn" data-i18n="chat.backBtn" data-i18n-title="chat.backBtnTitle" title="Back to chat">Back to chat</button>
+            </div>
+          </div>
+          <div id="chat-view" class="chat-view">
+            <div id="skill-author-bar" class="skill-author-bar hidden">
+              <p class="hint small skill-author-hint" data-i18n-html="skillAuthor.hint">
+                Chat with the <strong>Skill Author</strong> to describe the skill you want.
+              </p>
+              <div class="skill-author-upload-row">
+                <input type="file" id="skill-author-file-input" class="hidden" multiple accept=".md,.txt,.json,.yaml,.yml,.py,.js,.ts,.tsx,.jsx,.html,.css,.csv,.pdf,.doc,.docx" />
+                <button type="button" class="btn ghost btn-sm" id="skill-author-upload-btn" data-i18n="skillAuthor.upload">Upload reference files</button>
+                <ul id="skill-author-file-list" class="skill-author-file-list"></ul>
+                <button type="button" class="btn ghost btn-sm" id="skill-author-exit-btn" data-i18n="skillAuthor.exit">Exit creation</button>
+              </div>
+            </div>
+            <div id="chat-log" class="chat-log"></div>
+            <form id="chat-form" class="chat-input-row">
+              <textarea id="chat-message" rows="2" data-i18n-placeholder="chat.placeholder" placeholder="Type a message…" required></textarea>
+              <div class="chat-input-actions">
+                <button type="submit" class="btn primary" id="chat-btn" data-i18n="common.send">Send</button>
+                <button type="button" class="btn btn-stop hidden" id="chat-stop-btn" data-i18n="common.stop" data-i18n-title="chat.stopTitle" title="Stop">Stop</button>
+              </div>
+            </form>
+          </div>
+          <div id="skills-view" class="skills-view hidden">
+            <p class="hint small skills-hint" data-i18n-html="skills.hintHtml">
+              <strong>System skills</strong> live in <code>skill_package/skills/</code> (read-only).
+            </p>
+            <div class="skills-layout">
+              <aside class="skills-list-panel card-inner">
+                <div class="skills-list-head">
+                  <span class="skills-list-title" data-i18n="skills.list">Skill list</span>
+                  <div id="skills-origin-filter" class="skills-origin-filter" role="tablist" data-i18n-aria-label="skills.originFilter" aria-label="Skill type">
+                    <button type="button" class="skills-origin-tab active" data-origin="system" role="tab" data-i18n="skills.originSystem">System</button>
+                    <button type="button" class="skills-origin-tab" data-origin="custom" role="tab" data-i18n="skills.originCustom">Custom</button>
+                  </div>
+                  <div id="skills-list-actions" class="skills-list-actions hidden">
+                    <label class="btn ghost btn-sm skills-upload-label" for="skills-upload-input" id="skills-upload-label" data-i18n="skills.upload" data-i18n-title="skills.uploadTitle" title="Upload zip">Upload Skill</label>
+                    <button type="button" class="btn primary btn-sm" id="skills-create-chat-btn" data-i18n="skills.create" data-i18n-title="skills.createTitle" title="Create Skill">Create Skill</button>
+                  </div>
+                </div>
+                <input type="file" id="skills-upload-input" class="file-input-offscreen" accept=".zip,application/zip" />
+                <ul id="skills-browser-list" class="skills-browser-list"></ul>
+                <p id="skills-browser-empty" class="hint small hidden" data-i18n="skills.empty">No skills found.</p>
+              </aside>
+              <div class="skills-detail-panel">
+                <div class="skills-detail-head">
+                  <div class="skills-detail-head-row">
+                    <div class="skills-detail-head-main">
+                      <h3 id="skills-detail-title" class="skills-detail-title" data-i18n="skills.select">Select a skill</h3>
+                      <p id="skills-detail-meta" class="hint small skills-detail-meta"></p>
+                    </div>
+                    <div id="skills-detail-toolbar" class="skills-detail-toolbar hidden">
+                      <button type="button" class="btn ghost btn-sm" id="skills-delete-custom-btn" data-i18n="skills.deleteCustom">Delete</button>
+                    </div>
+                  </div>
+                  <p id="skills-readonly-hint" class="hint small skills-readonly-hint hidden" data-i18n="skills.readonlyHint">System skills are read-only.</p>
+                  <div id="skills-detail-tabs" class="skills-detail-tabs hidden" role="tablist" data-i18n-aria-label="skills.list" aria-label="Skill detail">
+                    <button type="button" class="skills-tab active" data-tab="skill" role="tab" data-i18n="skills.tabSkill">SKILL.md</button>
+                    <button type="button" class="skills-tab" data-tab="tools" role="tab" data-i18n="skills.tabTools">Tools</button>
+                    <button type="button" class="skills-tab" data-tab="files" role="tab" data-i18n="skills.tabFiles">Files</button>
+                  </div>
+                </div>
+                <div id="skills-tab-skill" class="skills-tab-pane skills-detail-body">
+                  <div id="skills-skill-preview-wrap" class="skills-skill-preview-wrap markdown-body">
+                    <p class="hint" data-i18n="skills.noSkillMd">Select a skill on the left to view SKILL.md.</p>
+                  </div>
+                  <div id="skills-skill-editor-wrap" class="skills-skill-editor-wrap hidden">
+                    <div class="skills-skill-editor-head">
+                      <span class="hint small" data-i18n="skills.editSkillMd">Edit SKILL.md</span>
+                      <button type="button" class="btn primary btn-sm" id="skills-skill-save-btn" disabled data-i18n="common.save">Save</button>
+                    </div>
+                    <div class="skills-skill-editor-scroll">
+                      <textarea id="skills-skill-editor" class="artifacts-editor skills-skill-editor" spellcheck="false" placeholder="SKILL.md"></textarea>
+                    </div>
+                    <p id="skills-skill-status" class="hint small artifacts-editor-status"></p>
+                  </div>
+                </div>
+                <div id="skills-tab-tools" class="skills-tab-pane skills-tools-pane hidden"></div>
+                <div id="skills-tab-files" class="skills-tab-pane skills-files-pane hidden">
+                  <div class="artifacts-layout">
+                    <aside class="artifacts-tree-panel card-inner">
+                      <div class="artifacts-tree-head">
+                        <span class="artifacts-tree-title" data-i18n="common.files">Files</span>
+                        <button type="button" class="btn ghost btn-sm" id="skills-new-file-btn" data-i18n="common.new" title="New">New</button>
+                      </div>
+                      <div id="skills-files-tree" class="artifacts-tree"></div>
+                      <p id="skills-files-tree-empty" class="hint small hidden" data-i18n="skills.noFiles">No files in this skill directory.</p>
+                    </aside>
+                    <div class="artifacts-editor-panel">
+                      <div class="artifacts-editor-head">
+                        <span id="skills-file-label" class="artifacts-file-label" data-i18n="common.noFileSelected">No file selected</span>
+                        <div class="artifacts-editor-head-actions">
+                          <button type="button" class="btn primary btn-sm" id="skills-file-save-btn" disabled data-i18n="common.save">Save</button>
+                        </div>
+                      </div>
+                      <div class="artifacts-editor-scroll">
+                        <textarea id="skills-file-editor" class="artifacts-editor" spellcheck="false" data-i18n-placeholder="artifacts.editorPlaceholder" placeholder="Select a file…" disabled></textarea>
+                      </div>
+                      <p id="skills-file-status" class="hint small artifacts-editor-status"></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="system-preview-view" class="system-preview-view hidden">
+            <div class="system-preview-toolbar">
+              <div class="system-preview-toolbar-left">
+                <label class="system-preview-label" for="system-preview-project-select" data-i18n="preview.frontend">Frontend project</label>
+                <select id="system-preview-project-select" class="system-preview-select"></select>
+                <button type="button" class="btn ghost btn-sm" id="system-preview-open-tab-btn" data-i18n="preview.openTab" data-i18n-title="preview.openTabTitle" title="Open in new tab" disabled>New tab</button>
+                <button type="button" class="btn ghost btn-sm" id="system-preview-restart-btn" data-i18n="preview.restart" data-i18n-title="preview.restartTitle" title="Restart" disabled>Restart</button>
+                <button type="button" class="btn ghost btn-sm" id="system-preview-log-btn" data-i18n="preview.backendLog" data-i18n-title="preview.backendLogTitle" title="Backend log" disabled>Backend log</button>
+              </div>
+              <p id="system-preview-meta" class="hint small system-preview-meta"></p>
+            </div>
+            <div id="system-preview-error-banner" class="system-preview-error-banner hidden" role="alert">
+              <span id="system-preview-error-banner-text" class="system-preview-error-banner-text"></span>
+              <div class="system-preview-error-banner-actions">
+                <button type="button" class="btn ghost btn-sm" id="system-preview-error-banner-ignore-btn" data-i18n="preview.ignore">Ignore</button>
+                <button type="button" class="btn ghost btn-sm" id="system-preview-error-banner-btn" data-i18n="preview.backToChat">Back to chat</button>
+              </div>
+            </div>
+            <p id="system-preview-backend-hint" class="hint small system-preview-backend-hint hidden"></p>
+            <div class="system-preview-frame-wrap">
+              <div id="system-preview-log-panel" class="system-preview-log-overlay hidden" data-i18n-aria-label="preview.backendLog" aria-label="Backend log">
+                <div class="system-preview-log-head">
+                  <span id="system-preview-log-title" class="system-preview-log-title">backend/…/.studio_uvicorn.log</span>
+                  <div class="system-preview-log-actions">
+                    <button type="button" class="btn ghost btn-sm" id="system-preview-log-autorefresh-btn" aria-pressed="false" data-i18n="preview.autoRefresh" data-i18n-title="preview.autoRefreshTitle" title="Auto refresh">Auto refresh</button>
+                    <button type="button" class="btn ghost btn-sm" id="system-preview-log-refresh-btn" data-i18n="common.refresh">Refresh</button>
+                    <button type="button" class="btn ghost btn-sm" id="system-preview-log-close-btn" data-i18n="preview.closeLog">Close</button>
+                  </div>
+                </div>
+                <pre id="system-preview-log-content" class="system-preview-log-content"></pre>
+              </div>
+              <iframe id="system-preview-frame" class="system-preview-frame" data-i18n-title="preview.frameTitle" title="System preview" sandbox="allow-scripts allow-same-origin"></iframe>
+              <div id="system-preview-empty" class="system-preview-empty hidden">
+                <p data-i18n="preview.empty">No previewable frontend pages in this saas.</p>
+                <p class="hint small" data-i18n-html="preview.emptyHint">Ask <strong>UI_build</strong> to generate preview.html.</p>
+              </div>
+            </div>
+          </div>
+          <div id="artifacts-view" class="artifacts-view hidden">
+            <p class="hint small artifacts-hint" data-i18n-html="artifacts.hint">Workspace files for current saas.</p>
+            <div class="artifacts-layout">
+              <aside class="artifacts-tree-panel card-inner">
+                <div class="artifacts-tree-head">
+                  <span class="artifacts-tree-title" data-i18n="common.files">Files</span>
+                  <button type="button" class="btn ghost btn-sm" id="artifacts-new-file-btn" data-i18n="common.new" title="New">New</button>
+                </div>
+                <div id="artifacts-tree" class="artifacts-tree"></div>
+                <p id="artifacts-tree-empty" class="hint small hidden" data-i18n="artifacts.emptyTree">No workspace files yet.</p>
+              </aside>
+              <div class="artifacts-editor-panel">
+                <div class="artifacts-editor-head">
+                  <span id="artifacts-file-label" class="artifacts-file-label" data-i18n="common.noFileSelected">No file selected</span>
+                  <div class="artifacts-editor-head-actions">
+                    <div id="artifacts-view-tabs" class="artifacts-view-tabs hidden" role="tablist" data-i18n-aria-label="artifacts.title" aria-label="Workspace files">
+                      <button type="button" class="artifacts-tab active" data-tab="preview" role="tab" data-i18n="artifacts.tabPreview" data-i18n-title="artifacts.tabPreviewTitle" title="Preview">Preview</button>
+                      <button type="button" class="artifacts-tab" data-tab="edit" role="tab" data-i18n="artifacts.tabEdit">Edit</button>
+                    </div>
+                    <button type="button" class="btn primary btn-sm" id="artifacts-save-btn" disabled data-i18n="common.save">Save</button>
+                  </div>
+                </div>
+                <div class="artifacts-editor-scroll">
+                  <section id="artifacts-frontmatter" class="artifacts-frontmatter hidden" data-i18n-aria-label="artifacts.metadata" aria-label="Metadata">
+                    <header class="artifacts-fm-head" id="artifacts-fm-head">
+                      <button type="button" class="artifacts-fm-toggle" id="artifacts-fm-toggle" aria-expanded="true" aria-controls="artifacts-fm-body" data-i18n-title="artifacts.metadataCollapse" title="Collapse">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                      </button>
+                      <div class="artifacts-fm-head-text">
+                        <h4 class="artifacts-fm-title" data-i18n="artifacts.metadata">Document metadata</h4>
+                        <p class="artifacts-fm-sub" data-i18n="artifacts.metadataSub">Knowledge YAML front matter</p>
+                        <p class="artifacts-fm-sub artifacts-fm-sub-collapsed" data-i18n="artifacts.metadataCollapsed">Collapsed — click to expand</p>
+                      </div>
+                      <div id="artifacts-fm-alias" class="artifacts-fm-alias hidden" title=""></div>
+                    </header>
+                    <div id="artifacts-fm-body" class="artifacts-fm-body">
+                      <div id="artifacts-fm-fields" class="artifacts-fm-list"></div>
+                    </div>
+                  </section>
+                  <div id="artifacts-preview-wrap" class="artifacts-preview-wrap hidden">
+                    <iframe id="artifacts-preview-frame" class="artifacts-preview-frame" data-i18n-title="artifacts.tabPreview" title="Preview" sandbox="allow-scripts allow-same-origin"></iframe>
+                    <p id="artifacts-preview-empty" class="hint small artifacts-preview-empty hidden" data-i18n="artifacts.previewEmpty">No preview page.</p>
+                  </div>
+                  <textarea id="artifacts-editor" class="artifacts-editor" spellcheck="false" data-i18n-placeholder="artifacts.editorPlaceholder" placeholder="Select a file…" disabled></textarea>
+                </div>
+                <p id="artifacts-editor-status" class="hint small artifacts-editor-status"></p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </section>
+  </div>
+  <script src="/static/i18n.js?v=1"></script>
+  <script src="/static/vendor/marked.min.js"></script>
+  <script src="/static/vendor/purify.min.js"></script>
+  <script src="/static/app.js?v=90"></script>
+</body>
+</html>

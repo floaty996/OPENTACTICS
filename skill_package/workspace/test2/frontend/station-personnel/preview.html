@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>站点人员信息系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;color:#333}
+.header{background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:20px;font-weight:600}.header .sub{font-size:12px;opacity:.7}
+.container{max-width:1400px;margin:0 auto;padding:16px}
+.nav{display:flex;gap:4px;background:#fff;border-radius:8px;padding:4px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow-x:auto}
+.nav button{padding:10px 20px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-size:14px;color:#666;white-space:nowrap;transition:all .2s}
+.nav button:hover{background:#e8f0fe;color:#1a73e8}
+.nav button.active{background:#1a73e8;color:#fff;font-weight:500}
+.page{display:none}.page.active{display:block}
+.card{background:#fff;border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card h2{font-size:16px;margin-bottom:16px;color:#1a73e8;border-bottom:2px solid #e8f0fe;padding-bottom:10px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.stat-card{background:#fff;border-radius:10px;padding:20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.stat-card .num{font-size:32px;font-weight:700;color:#1a73e8}.stat-card .label{font-size:13px;color:#888;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:#f8f9fa;color:#555;font-weight:600;padding:10px 12px;text-align:left;border-bottom:2px solid #e0e0e0;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #f0f0f0}
+tr:hover td{background:#f5f8ff}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:500}
+.badge.\u5728\u804c{background:#e6f7e6;color:#2e7d32}
+.badge.\u51fa\u5dee{background:#fff8e1;color:#f57f17}
+.badge.\u4f11\u5047{background:#e3f2fd;color:#1565c0}
+.badge.pending{background:#fff8e1;color:#f57f17}
+.badge.approved{background:#e6f7e6;color:#2e7d32}
+.badge.rejected{background:#ffebee;color:#c62828}
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.toolbar select,.toolbar input{padding:6px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none}
+.toolbar select:focus,.toolbar input:focus{border-color:#1a73e8}
+.btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;transition:all .2s}
+.btn-primary{background:#1a73e8;color:#fff}.btn-primary:hover{background:#1557b0}
+.btn-success{background:#2e7d32;color:#fff}.btn-success:hover{background:#1b5e20}
+.btn-danger{background:#c62828;color:#fff}.btn-danger:hover{background:#b71c1c}
+.btn-outline{background:transparent;border:1px solid #ddd;color:#666}.btn-outline:hover{border-color:#1a73e8;color:#1a73e8}
+.btn-sm{padding:4px 10px;font-size:12px}
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:100;justify-content:center;align-items:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:12px;padding:24px;min-width:440px;max-width:600px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h3{font-size:18px;margin-bottom:16px}
+.modal label{display:block;font-size:13px;color:#555;margin:10px 0 4px}
+.modal input,.modal textarea,.modal select{width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;outline:none}
+.modal textarea{min-height:80px;resize:vertical}
+.modal .btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.modal .btn-row .btn{min-width:80px}
+.loading{text-align:center;padding:40px;color:#999}.empty{text-align:center;padding:40px;color:#999}
+.status{text-align:center;padding:6px;font-size:13px;color:#888}.status.online{color:#2e7d32}
+.chart-bar{display:flex;align-items:center;gap:8px;margin:4px 0}
+.chart-bar .bar{height:24px;background:linear-gradient(90deg,#1a73e8,#4a9af5);border-radius:4px;min-width:4px;transition:width .6s}
+.chart-bar .lbl{min-width:100px;font-size:13px}.chart-bar .cnt{font-size:13px;color:#666;min-width:30px;text-align:right}
+</style>
+</head>
+<body>
+
+<div class="header"><div><h1>站点人员信息系统</h1><div class="sub">test2 - MySQL（basic_data + allocation）</div></div><span id="apiStatus" class="status">检测 API</span></div>
+
+<div class="container">
+<div class="nav" id="navTabs">
+<button class="active" data-page="analysis">人员分析</button>
+<button data-page="employees">员工列表</button>
+<button data-page="transfers">换站申请</button>
+<button data-page="stations">站点管理</button>
+</div>
+
+<div class="page active" id="page-analysis">
+<div class="stat-grid" id="summaryCards">
+<div class="stat-card"><div class="num">-</div><div class="label">总员工数</div></div>
+<div class="stat-card"><div class="num">-</div><div class="label">站点数</div></div>
+<div class="stat-card"><div class="num">-</div><div class="label">职位类型</div></div>
+<div class="stat-card"><div class="num">-</div><div class="label">部门数</div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+<div class="card"><h2>各站点人员分布</h2><div id="stationChart"></div></div>
+<div class="card"><h2>职位分布</h2><div id="positionChart"></div></div>
+</div></div>
+
+<div class="page" id="page-employees">
+<div class="card">
+<h2>员工信息列表</h2>
+<div class="toolbar">
+<select id="empStationFilter"><option value="">全部站点</option></select>
+<select id="empPositionFilter"><option value="">全部职位</option></select>
+<input id="empSearch" placeholder="搜索姓名/工号" style="width:200px" oninput="filterEmployees()"/>
+<span style="margin-left:auto;font-size:13px;color:#888" id="empCount">共 0 人</span>
+</div>
+<div id="empTableWrap"><div class="loading">加载中</div></div>
+</div></div>
+
+<div class="page" id="page-transfers">
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+<h2 style="border:none;padding:0;margin:0">换站申请与审批</h2>
+<button class="btn btn-primary" onclick="showApplyModal()">+ 提交申请</button>
+</div>
+<div class="toolbar">
+<select id="transferStatusFilter" onchange="loadTransfers()">
+<option value="">全部状态</option>
+<option value="pending">待审批</option>
+<option value="approved">已通过</option>
+<option value="rejected">已驳回</option>
+</select>
+</div>
+<div id="transferTableWrap"><div class="loading">加载中</div></div>
+</div></div>
+
+<div class="page" id="page-stations">
+<div class="card"><h2>站点管理</h2><div id="stationListWrap"><div class="loading">加载中</div></div></div>
+</div></div>
+
+<div class="modal-overlay" id="applyModal">
+<div class="modal">
+<h3>提交换站申请</h3>
+<label>员工编号（emp_id）</label><input id="applyEmployeeNo" placeholder="如 00122807"/>
+<label>目标线路</label><select id="applyToLine"></select>
+<label>目标站点</label><select id="applyToStation"></select>
+<label>申请理由</label><textarea id="applyReason" placeholder="请详细说明换站原因"></textarea>
+<div class="btn-row"><button class="btn btn-outline" onclick="closeModal('applyModal')">取消</button><button class="btn btn-primary" onclick="submitApplication()">提交</button></div>
+</div></div>
+
+<div class="modal-overlay" id="approveModal">
+<div class="modal">
+<h3>审批换站申请</h3>
+<div id="approveDetail" style="font-size:14px;margin-bottom:12px"></div>
+<label>审批人</label><input id="approveApprover" placeholder="审批人姓名"/>
+<label>审批结果</label>
+<select id="approveStatus"><option value="approved">通过</option><option value="rejected">驳回</option></select>
+<label id="rejectLabel" style="display:none">驳回原因</label>
+<textarea id="approveReason" style="display:none" placeholder="请说明驳回原因"></textarea>
+<div class="btn-row"><button class="btn btn-outline" onclick="closeModal('approveModal')">取消</button><button class="btn btn-success" onclick="doApprove()">确认审批</button></div>
+</div></div>
+
+<script>
+/* === FULLSTACK_API_BEGIN — 由 skill 工具维护，勿删 === */
+const API_BASE = (window.__STUDIO_API_BASE__ || 'http://127.0.0.1:8000/api');
+
+async function apiGet(path) {
+  const r = await fetch(API_BASE + path);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function apiPost(path, body) {
+  const r = await fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function apiPut(path, body) {
+  const r = await fetch(API_BASE + path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function apiDel(path) {
+  const r = await fetch(API_BASE + path, { method: 'DELETE' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function checkBackendHealth() {
+  const el = document.getElementById('apiStatus');
+  try {
+    const d = await apiGet('/health');
+    if (d && d.ok) {
+      if (el) { el.textContent = 'API 已连接'; el.className = 'status online'; }
+      return true;
+    }
+  } catch (e) {}
+  if (el) {
+    el.textContent = 'API 未连接（' + API_BASE + '）';
+    el.className = 'status';
+  }
+  return false;
+}
+/* === FULLSTACK_API_END === */
+
+/* FULLSTACK_API 块将由 save_ui_file 自动维护 */
+
+var stations=[],employees=[],transfers=[],currentTransferId=null;
+
+document.querySelectorAll('.nav button').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('.nav button').forEach(function(b){b.classList.remove('active')});document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});btn.classList.add('active');document.getElementById('page-'+btn.dataset.page).classList.add('active');if(btn.dataset.page==='analysis')loadAnalysis();if(btn.dataset.page==='employees')loadEmployees();if(btn.dataset.page==='transfers')loadTransfers();if(btn.dataset.page==='stations')loadStations()})});
+
+function showModal(id){document.getElementById(id).classList.add('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+document.getElementById('approveStatus').addEventListener('change',function(){var r=this.value==='rejected';document.getElementById('rejectLabel').style.display=r?'block':'none';document.getElementById('approveReason').style.display=r?'block':'none'});
+
+async function loadStations(){try{stations=await apiGet('/stations');var sel=document.getElementById('empStationFilter');sel.innerHTML='<option value="">全部站点</option>';stations.forEach(function(s){sel.innerHTML+='<option value="'+s.subway_line+'|'+s.name+'">'+s.subway_line+' - '+s.name+'</option>'});sel.onchange=filterEmployees;var wrap=document.getElementById('stationListWrap');var html='<table><thead><tr><th>线路</th><th>站名</th><th>员工数</th><th>操作</th></tr></thead><tbody>';stations.forEach(function(s){html+='<tr><td>'+s.subway_line+'</td><td><strong>'+s.name+'</strong></td><td>'+(s.employee_count||0)+' 人</td><td><button class="btn btn-primary btn-sm" onclick="showStationDetail('+s.id+')">查看详情</button></td></tr>'});html+='</tbody></table>';wrap.innerHTML=html||'<div class="empty">暂无站点数据</div>';var c2=document.querySelectorAll('#summaryCards .stat-card')[1];if(c2)c2.querySelector('.num').textContent=stations.length}catch(e){document.getElementById('stationListWrap').innerHTML='<div class="empty">加载失败</div>'}}
+
+async function showStationDetail(stationId){try{var data=await apiGet('/stations/'+stationId);var emps=data.employees||[];var html='<div class="card"><h2>'+data.subway_line+' - '+data.name+'</h2><div class="detail-grid"><div class="detail-item"><div class="label">员工数</div><div class="value">'+emps.length+' 人</div></div></div><table style="margin-top:12px"><thead><tr><th>工号</th><th>姓名</th><th>职位</th><th>部门</th><th>状态</th></tr></thead><tbody>';emps.forEach(function(e){var ec=e||{};html+='<tr><td>'+(ec.employee_no||'-')+'</td><td><strong>'+(ec.name||'-')+'</strong></td><td>'+(ec.position||'-')+'</td><td>'+(ec.department||'-')+'</td><td><span class="badge '+(ec.status||'')+'">'+(ec.status||'-')+'</span></td></tr>'});html+='</tbody></table></div>';document.getElementById('stationListWrap').innerHTML=html}catch(e){alert('加载失败')}}
+
+async function loadEmployees(){try{employees=await apiGet('/employees');var positions=[];var posSet={};employees.forEach(function(e){if(e.position&&!posSet[e.position]){posSet[e.position]=true;positions.push(e.position)}});var sel=document.getElementById('empPositionFilter');sel.innerHTML='<option value="">全部职位</option>';positions.forEach(function(p){sel.innerHTML+='<option value="'+p+'">'+p+'</option>'});sel.onchange=filterEmployees;filterEmployees()}catch(e){document.getElementById('empTableWrap').innerHTML='<div class="empty">加载失败</div>'}}
+
+function filterEmployees(){var fv=document.getElementById('empStationFilter').value;var line=fv?fv.split('|')[0]:'';var station=fv?fv.split('|')[1]:'';var pos=document.getElementById('empPositionFilter').value;var q=document.getElementById('empSearch').value.toLowerCase();var filtered=employees.filter(function(e){if(line&&e.subway_line!==line)return false;if(station&&e.subway_station!==station)return false;if(pos&&e.position!==pos)return false;if(q&&e.name.toLowerCase().indexOf(q)===-1&&e.employee_no.toLowerCase().indexOf(q)===-1)return false;return true});document.getElementById('empCount').textContent='共 '+filtered.length+' 人';var html='<table><thead><tr><th>工号</th><th>姓名</th><th>线路</th><th>站点</th><th>职位</th><th>部门</th><th>状态</th></tr></thead><tbody>';filtered.forEach(function(e){html+='<tr><td>'+e.employee_no+'</td><td><strong>'+e.name+'</strong></td><td>'+(e.subway_line||'-')+'</td><td>'+(e.subway_station||'-')+'</td><td>'+(e.position||'-')+'</td><td>'+(e.department||'-')+'</td><td><span class="badge '+(e.status||'')+'">'+(e.status||'-')+'</span></td></tr>'});html+='</tbody></table>';if(filtered.length===0)html='<div class="empty">无匹配员工</div>';document.getElementById('empTableWrap').innerHTML=html}
+
+async function loadTransfers(){try{var s=document.getElementById('transferStatusFilter').value;var url=s?'/transfers?status='+s:'/transfers';transfers=await apiGet(url);var labels={pending:'待审批',approved:'已通过',rejected:'已驳回'};var html='<table><thead><tr><th>员工</th><th>原线路/站</th><th>目标线路/站</th><th>理由</th><th>申请日期</th><th>状态</th><th>操作</th></tr></thead><tbody>';transfers.forEach(function(t){var action='';if(t.status==='pending'){action='<button class="btn btn-success btn-sm" onclick="showApproveModal('+t.id+')">审批</button>'}else if(t.status==='approved'){action='<span style="font-size:12px;color:#888">已由 '+(t.approver||'系统')+' 审批</span>'}else{action='<span style="font-size:12px;color:#888">'+(t.reject_reason?'原因: '+t.reject_reason:'已驳回')+'</span>'}html+='<tr><td>'+t.employee_name+'<br/><span style="font-size:12px;color:#999">'+t.employee_no+'</span></td><td>'+t.from_subway_line+' - '+t.from_subway_station+'</td><td>'+t.to_subway_line+' - '+t.to_subway_station+'</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(t.reason||'')+'">'+(t.reason||'-')+'</td><td>'+(t.apply_date||'-')+'</td><td><span class="badge '+t.status+'">'+labels[t.status]+'</span></td><td>'+action+'</td></tr>'});html+='</tbody></table>';if(transfers.length===0)html='<div class="empty">暂无申请记录</div>';document.getElementById('transferTableWrap').innerHTML=html}catch(e){document.getElementById('transferTableWrap').innerHTML='<div class="empty">加载失败</div>'}}
+
+async function loadAnalysis(){try{var data=await apiGet('/employees/analysis/summary');var cards=document.querySelectorAll('#summaryCards .stat-card');if(cards[0])cards[0].querySelector('.num').textContent=data.total_employees||0;if(cards[3])cards[3].querySelector('.num').textContent=(data.department_stats||[]).length;var shtml='';var maxEmp=1;if(data.by_station&&data.by_station.length>0){maxEmp=Math.max.apply(null,data.by_station.map(function(s){return s.employee_count||0}))}(data.by_station||[]).forEach(function(s){var pct=Math.round((s.employee_count||0)/maxEmp*100);shtml+='<div class="chart-bar"><span class="lbl">'+s.station_name+'</span><div class="bar" style="width:'+pct+'%"></div><span class="cnt">'+(s.employee_count||0)+'</span></div>'});document.getElementById('stationChart').innerHTML=shtml||'<div class="empty">暂无数据</div>';var phtml='';var maxPos=1;if(data.by_position&&data.by_position.length>0){maxPos=Math.max.apply(null,data.by_position.map(function(p){return p.count||0}))}(data.by_position||[]).forEach(function(p){var pct=Math.round((p.count||0)/maxPos*100);phtml+='<div class="chart-bar"><span class="lbl">'+p.position+'</span><div class="bar" style="width:'+pct+'%;background:linear-gradient(90deg,#2e7d32,#66bb6a)"></div><span class="cnt">'+(p.count||0)+'</span></div>'});document.getElementById('positionChart').innerHTML=phtml||'<div class="empty">暂无数据</div>';if(cards[2])cards[2].querySelector('.num').textContent=(data.by_position||[]).length}catch(e){}}
+
+function showApplyModal(){document.getElementById('applyEmployeeNo').value='';document.getElementById('applyReason').value='';if(stations.length>0){var lines=[];var lineSet={};stations.forEach(function(s){if(!lineSet[s.subway_line]){lineSet[s.subway_line]=true;lines.push(s.subway_line)}});var lineSel=document.getElementById('applyToLine');lineSel.innerHTML='<option value="">选择线路</option>';lines.forEach(function(l){lineSel.innerHTML+='<option value="'+l+'">'+l+'</option>'})}applyLineChange();showModal('applyModal')}
+
+function applyLineChange(){var line=document.getElementById('applyToLine').value;var sel=document.getElementById('applyToStation');sel.innerHTML='<option value="">选择站点</option>';if(line&&stations.length>0){stations.filter(function(s){return s.subway_line===line}).forEach(function(s){sel.innerHTML+='<option value="'+s.name+'">'+s.name+'</option>'})}}
+document.getElementById('applyToLine').addEventListener('change',applyLineChange)
+
+async function submitApplication(){var employee_no=document.getElementById('applyEmployeeNo').value.trim();var to_subway_line=document.getElementById('applyToLine').value;var to_subway_station=document.getElementById('applyToStation').value;var reason=document.getElementById('applyReason').value.trim();if(!employee_no||!to_subway_line||!to_subway_station||!reason){alert('请完整填写申请信息');return}try{var res=await apiPost('/transfers',{employee_no:employee_no,to_subway_line:to_subway_line,to_subway_station:to_subway_station,reason:reason});alert('申请提交成功！');closeModal('applyModal');loadTransfers()}catch(e){alert('提交失败：'+(e.message||'请确认信息'))}}
+
+async function showApproveModal(transferId){currentTransferId=transferId;try{var t=await apiGet('/transfers/'+transferId);document.getElementById('approveDetail').innerHTML='<div style="background:#f8f9fa;padding:12px;border-radius:8px"><p><strong>'+t.employee_name+'</strong>（'+t.employee_no+'）申请从 <strong>'+t.from_subway_line+' - '+t.from_subway_station+'</strong> 调往 <strong>'+t.to_subway_line+' - '+t.to_subway_station+'</strong></p><p style="margin-top:6px;color:#666">理由：'+(t.reason||'无')+'</p></div>';document.getElementById('approveApprover').value='';document.getElementById('approveStatus').value='approved';document.getElementById('approveReason').value='';document.getElementById('approveReason').style.display='none';document.getElementById('rejectLabel').style.display='none';showModal('approveModal')}catch(e){alert('加载申请详情失败')}}
+
+async function doApprove(){var status=document.getElementById('approveStatus').value;var approver=document.getElementById('approveApprover').value.trim();var reject_reason=document.getElementById('approveReason').value.trim();if(!approver){alert('请输入审批人姓名');return}if(status==='rejected'&&!reject_reason){alert('驳回时请填写原因');return}try{var res=await apiPut('/transfers/'+currentTransferId+'/approve',{status:status,approver:approver,reject_reason:reject_reason});alert(res.message||'审批完成 - 员工站点已同步更新');closeModal('approveModal');loadTransfers()}catch(e){alert('审批失败')}}
+
+(async function init(){var ok=await checkBackendHealth();if(ok){await loadStations();await loadAnalysis()}})();
+</script>
+</body>
+</html>

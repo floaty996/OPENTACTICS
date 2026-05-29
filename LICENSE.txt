@@ -1,0 +1,25 @@
+# PolyForm Noncommercial License 1.0.0
+<https://polyformproject.org/licenses/noncommercial/1.0.0>
+
+Copyright (c) winnow 2026/05
+
+## Acceptance
+In order to get any license under these terms, you must agree to them as both strict obligations and conditions to all your licenses.
+
+## Copyright License
+The licensor grants you a copyright license for the software to do everything you might do with the software other than use it for Commercial Purpose, subject to the terms of this License.
+
+## Commercial Purpose
+Commercial Purpose means any use intended for or directed toward commercial advantage or monetary compensation of any kind.
+
+## Distribution License
+The licensor grants you an additional copyright license to distribute copies of the Software, with or without modifications, solely for Noncommercial Purpose, subject to the terms of this License.
+
+## Changes and New Works License
+The licensor grants you an additional copyright license to make changes and new works based on the Software, solely for Noncommercial Purpose, subject to the terms of this License.
+
+## Patent License
+The licensor grants you a patent license for the Software to make, have made, use, sell, offer for sale, import, and otherwise transfer the Software, solely for Noncommercial Purpose, subject to the terms of this License.
+
+## Termination
+If you violate any of these terms, all licenses granted to you automatically terminate.

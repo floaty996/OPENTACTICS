@@ -1,0 +1,9 @@
+{
+  "project_name": "{项目名}",
+  "db_alias": "{客户库别名}",
+  "has_database_connection": true,
+  "stack": "react-vite",
+  "api_mode": "proxy",
+  "created_at": "{YYYY-MM-DD}",
+  "description": "已接入数据库的前端工程"
+}

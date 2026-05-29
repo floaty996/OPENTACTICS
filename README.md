@@ -399,7 +399,7 @@ python skill_invoke_example.py   # 工具调用示例
 
 ## 许可证
 
-若仓库未单独声明许可证，使用前请与项目维护者确认。
+若仓库声明许可证**PolyForm Noncommercial License 1.0.0**，具体查看`LICENSE.txt`
 
 ---
 

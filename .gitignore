@@ -5,3 +5,5 @@ skill_package/config/database/*.json
 !skill_package/config/database/*.example
 !skill_package/config/database/example.*
 config/database.json
+__pycache__/
+*.pyc

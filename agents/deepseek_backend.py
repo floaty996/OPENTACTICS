@@ -197,8 +197,15 @@ class DeepSeekAgent:
 def get_agent_backend(
     tool_runner: ToolRunner | None = None,
     config_path: str | Path | None = None,
+    *,
+    db_alias: str | None = None,
 ) -> DeepSeekAgent:
-    cfg = load_deepseek_config(config_path)
+    if db_alias:
+        from agents.llm_config import load_agent_config
+
+        cfg = load_agent_config(db_alias)
+    else:
+        cfg = load_deepseek_config(config_path)
 
     if tool_runner is None:
         from skill_package import get_tool_function

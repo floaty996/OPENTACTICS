@@ -13,8 +13,8 @@ list_schema = {
     "function": {
         "name": "list_source_files",
         "description": (
-            "列举 workspace/{db_alias}/source_files/ 下已上传的 xlsx/csv 源数据文件。"
-            "可与 MySQL 源库单独或组合使用。"
+            "List xlsx/csv source files under workspace/{db_alias}/source_files/. "
+            "Can be used alone or together with MySQL source databases."
         ),
         "parameters": {
             "type": "object",
@@ -29,8 +29,8 @@ read_schema = {
     "function": {
         "name": "read_source_file",
         "description": (
-            "预览 workspace 源数据文件（xlsx/csv）：列名、行数、样例行。"
-            "整理业务知识前可先调用；完整分析后写入 dataset/*.md。"
+            "Preview a workspace source file (xlsx/csv): columns, row count, sample rows. "
+            "Call before documenting business knowledge; write full analysis to dataset/*.md."
         ),
         "parameters": {
             "type": "object",
@@ -38,15 +38,15 @@ read_schema = {
                 "db_alias": {"type": "string"},
                 "path": {
                     "type": "string",
-                    "description": "config.source_files 中的相对路径，如 source_files/20260521_sales.csv",
+                    "description": "Relative path from config.source_files, e.g. source_files/20260521_sales.csv",
                 },
                 "sheet": {
                     "type": "string",
-                    "description": "xlsx 工作表名，省略则用第一个",
+                    "description": "xlsx sheet name; default first sheet",
                 },
                 "max_rows": {
                     "type": "integer",
-                    "description": "样例行数，默认 20，最大 100",
+                    "description": "Sample row count, default 20, max 100",
                 },
             },
             "required": ["db_alias", "path"],
@@ -59,7 +59,7 @@ read_schema = {
     "database",
     name="list_source_files",
     schema=list_schema,
-    alias=["列举源文件", "源数据文件列表"],
+    alias=["list_source_data_files"],
 )
 def list_source_files(db_alias: str) -> str:
     try:
@@ -73,7 +73,7 @@ def list_source_files(db_alias: str) -> str:
     "database",
     name="read_source_file",
     schema=read_schema,
-    alias=["读取源文件", "预览源数据文件"],
+    alias=["preview_source_file"],
 )
 def read_source_file(
     db_alias: str,

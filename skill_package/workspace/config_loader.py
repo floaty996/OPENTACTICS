@@ -88,7 +88,7 @@ def merge_preserved_secrets(payload: dict[str, Any], existing: dict[str, Any] | 
     if not existing:
         return payload
     out = dict(payload)
-    for key in ("password", "target_password"):
+    for key in ("password", "target_password", "gemini_api_key"):
         if is_redacted_secret(out.get(key)):
             prev = existing.get(key)
             if prev and not is_redacted_secret(prev):
@@ -98,7 +98,7 @@ def merge_preserved_secrets(payload: dict[str, Any], existing: dict[str, Any] | 
 
 def mask_config_secrets(data: dict[str, Any]) -> dict[str, Any]:
     out = dict(data)
-    for key in ("password", "target_password"):
+    for key in ("password", "target_password", "gemini_api_key"):
         if out.get(key):
             out[key] = "***"
     return out

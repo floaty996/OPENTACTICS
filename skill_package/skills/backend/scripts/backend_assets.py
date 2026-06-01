@@ -18,11 +18,11 @@ list_schema = {
     "type": "function",
     "function": {
         "name": "list_backend_projects",
-        "description": "列举 workspace 下 backend/ 中的后端 API 工程（可按 db_alias 过滤）",
+        "description": "List backend API projects under workspace/backend/ (optional db_alias filter)",
         "parameters": {
             "type": "object",
             "properties": {
-                "db_alias": {"type": "string", "description": "省略则列举全部工作区"},
+                "db_alias": {"type": "string", "description": "Omit to list all workspaces"},
             },
             "required": [],
         },
@@ -34,8 +34,8 @@ check_schema = {
     "function": {
         "name": "check_db_connected_backend",
         "description": (
-            "检查 workspace/{db_alias}/backend/ 是否已有接库后端工程；"
-            "返回 deliverables 清单（是否缺 main.py 等）。全栈收尾前建议配合 verify_fullstack_deliverables。"
+            "Check whether workspace/{db_alias}/backend/ already has a DB-connected backend; "
+            "returns deliverables (e.g. missing main.py). Call verify_fullstack_deliverables before closing full-stack work."
         ),
         "parameters": {
             "type": "object",
@@ -49,13 +49,13 @@ read_schema = {
     "type": "function",
     "function": {
         "name": "read_backend_file",
-        "description": "读取 workspace/{db_alias}/backend/{project_name}/ 内文件",
+        "description": "Read a file under workspace/{db_alias}/backend/{project_name}/",
         "parameters": {
             "type": "object",
             "properties": {
                 "db_alias": {"type": "string"},
-                "project_name": {"type": "string", "description": "工程目录名，如 ethnic-analysis-api"},
-                "file_path": {"type": "string", "description": "工程内路径，如 main.py 或 routers/employees.py"},
+                "project_name": {"type": "string", "description": "Project directory name, e.g. ethnic-analysis-api"},
+                "file_path": {"type": "string", "description": "Path inside project, e.g. main.py or routers/employees.py"},
             },
             "required": ["db_alias", "project_name", "file_path"],
         },
@@ -67,17 +67,17 @@ save_schema = {
     "function": {
         "name": "save_backend_file",
         "description": (
-            "整文件写入 workspace/{db_alias}/backend/{project_name}/。"
-            "新建文件或大范围重写时用；小范围修改请优先 patch_backend_file。"
-            "须含完整 content。新建接库后端须先写 api_manifest.json。"
+            "Write a full file under workspace/{db_alias}/backend/{project_name}/. "
+            "Use for new files or large rewrites; prefer patch_backend_file for small edits. "
+            "content must be complete. New DB-connected backends need api_manifest.json first."
         ),
         "parameters": {
             "type": "object",
             "properties": {
-                "db_alias": {"type": "string", "description": "工作区别名"},
-                "project_name": {"type": "string", "description": "backend 下工程目录名"},
-                "file_path": {"type": "string", "description": "工程内相对路径"},
-                "content": {"type": "string", "description": "要写入的完整文件内容"},
+                "db_alias": {"type": "string", "description": "Workspace alias"},
+                "project_name": {"type": "string", "description": "Directory under backend/"},
+                "file_path": {"type": "string", "description": "Relative path inside project"},
+                "content": {"type": "string", "description": "Full file content to write"},
             },
             "required": ["db_alias", "project_name", "file_path", "content"],
         },
@@ -89,9 +89,9 @@ patch_schema = {
     "function": {
         "name": "patch_backend_file",
         "description": (
-            "按片段替换 backend 工程内已有文件（old_string → new_string），"
-            "比 save_backend_file 更快、省 token。修改前须 read_backend_file 复制精确原文。"
-            "多处相同文本时设 occurrence 或 replace_all。"
+            "Patch an existing backend file (old_string → new_string). "
+            "Faster than save_backend_file. Read the file first and copy exact text. "
+            "Use occurrence or replace_all when multiple matches exist."
         ),
         "parameters": {
             "type": "object",
@@ -101,16 +101,16 @@ patch_schema = {
                 "file_path": {"type": "string"},
                 "old_string": {
                     "type": "string",
-                    "description": "要被替换的原文片段，须与文件内容完全一致",
+                    "description": "Exact substring to replace; must match file content",
                 },
-                "new_string": {"type": "string", "description": "替换后的内容"},
+                "new_string": {"type": "string", "description": "Replacement text"},
                 "replace_all": {
                     "type": "boolean",
-                    "description": "为 true 时替换所有匹配；默认 false 且仅允许唯一匹配",
+                    "description": "If true, replace all matches; default false requires a unique match",
                 },
                 "occurrence": {
                     "type": "integer",
-                    "description": "replace_all=false 且有多处匹配时，替换第几处（从 1 开始）",
+                    "description": "When replace_all=false and multiple matches, which match to replace (1-based)",
                 },
             },
             "required": ["db_alias", "project_name", "file_path", "old_string", "new_string"],
@@ -123,8 +123,8 @@ run_info_schema = {
     "function": {
         "name": "get_backend_run_info",
         "description": (
-            "查询后端工程的本地运行方式、默认端口、API 前缀及关联前端工程名；"
-            "返回 studio_run_command / studio_gaps / ready_for_studio，供 Skill Studio 系统预览自检。"
+            "Get local run commands, default port, API prefix, and linked frontend; "
+            "returns studio_run_command / studio_gaps / ready_for_studio for Skill Studio preview checks."
         ),
         "parameters": {
             "type": "object",
@@ -142,7 +142,7 @@ def _project_root(db_alias: str, project_name: str) -> Path:
     alias = validate_db_alias(db_alias)
     name = project_name.strip().strip("/")
     if not name or ".." in Path(name).parts:
-        raise ValueError("project_name 非法")
+        raise ValueError("Invalid project_name")
     root = (backend_dir(alias) / name).resolve()
     root.relative_to(backend_dir(alias).resolve())
     return root
@@ -152,7 +152,7 @@ def _resolve_file(db_alias: str, project_name: str, file_path: str) -> Path:
     proj = _project_root(db_alias, project_name)
     rel = file_path.strip().lstrip("/")
     if not rel or ".." in Path(rel).parts:
-        raise ValueError("file_path 非法")
+        raise ValueError("Invalid file_path")
     target = (proj / rel).resolve()
     target.relative_to(proj)
     return target
@@ -200,7 +200,7 @@ def _scan_projects(db_alias: str | None = None) -> list[dict]:
 def _prepare_backend_content(
     rel_path: str, content: str, *, api_prefix: str = "/api"
 ) -> tuple[str, list[str], list[str]]:
-    """自动修正可修复项后，返回仍违反规范的错误（非空则禁止写盘）。"""
+    """After auto-fixes, return blocking violations (non-empty means write is rejected)."""
     from skill_package.core.fullstack_contract import (
         ensure_main_py_health_snippet,
         fix_relative_imports,
@@ -230,7 +230,7 @@ def _blocked_payload(violations: list[str], *, file_path: str) -> str:
             "file_path": file_path,
             "violations": violations,
             "spec_summary": spec_summary_text(),
-            "message": "违反全栈生成硬性规范，已拒绝写入。请按 violations 修正 content 后重试 save_backend_file。",
+            "message": "Violates full-stack generation rules; write rejected. Fix violations and retry save_backend_file.",
         },
         ensure_ascii=False,
     )
@@ -239,7 +239,7 @@ def _blocked_payload(violations: list[str], *, file_path: str) -> str:
 def _after_backend_file_write(
     db_alias: str, project_name: str, file_path: str, target: Path, content: str | None = None
 ) -> dict:
-    """保存或 patch 后同步 manifest、修正常见启动/对接问题。"""
+    """After save/patch, sync manifest and record integration hints."""
     alias = validate_db_alias(db_alias)
     proj = _project_root(alias, project_name)
     extra: dict = {}
@@ -257,7 +257,7 @@ def _after_backend_file_write(
             body = content if content is not None else target.read_text(encoding="utf-8")
         except OSError:
             body = ""
-        # 写盘前已在 save/patch 中规范化；此处仅记录
+        # Normalized in save/patch; record only here
         if body and content is not None:
             extra["content_normalized"] = True
 
@@ -271,10 +271,10 @@ def _after_backend_file_write(
         if meta.get("linked_frontend"):
             extra["linked_frontend"] = meta["linked_frontend"]
         extra["frontend_next_step"] = (
-            f"请 UI_build 调用 get_fullstack_api_contract(db_alias, frontend_project="
-            f"{meta.get('linked_frontend')!r}) 后再写 preview.html"
+            f"UI_build should call get_fullstack_api_contract(db_alias, frontend_project="
+            f"{meta.get('linked_frontend')!r}) before writing preview.html"
             if meta.get("linked_frontend")
-            else "请在 api_manifest.json 设置 linked_frontend 后由 UI_build 对接前端"
+            else "Set linked_frontend in api_manifest.json, then let UI_build wire the frontend"
         )
     return extra
 
@@ -315,18 +315,18 @@ def check_db_connected_backend(db_alias: str) -> str:
             proj_dir = backend_dir(alias) / row["project_name"]
             meta = _read_manifest_file(proj_dir)
             deliverables = audit_backend_project(proj_dir)
-            msg = "已存在接库后端，请在其上迭代。"
+            msg = "DB-connected backend exists; iterate on it."
             if deliverables["missing_required"]:
                 msg += (
-                    f" 警告：缺少必需文件 {deliverables['missing_required']}，"
-                    "须 save_backend_file 补全后才能 uvicorn 启动。"
+                    f" Warning: missing required files {deliverables['missing_required']}; "
+                    "use save_backend_file before uvicorn can start."
                 )
             if deliverables.get("linked_frontend") and not deliverables.get(
                 "linked_frontend_exists"
             ):
                 msg += (
-                    f" 警告：linked_frontend={deliverables['linked_frontend']!r} 的前端目录不存在，"
-                    "须由 UI_build 创建，禁止在回复中声称前端已完成。"
+                    f" Warning: linked_frontend={deliverables['linked_frontend']!r} frontend directory missing; "
+                    "UI_build must create it—do not claim frontend is done."
                 )
             return json.dumps(
                 {
@@ -347,7 +347,7 @@ def check_db_connected_backend(db_alias: str) -> str:
             "exists": False,
             "db_alias": alias,
             "workspace_backend": f"workspace/{alias}/backend/",
-            "message": "未找到接库后端，请在 backend/ 下新建工程并写入 api_manifest.json。",
+            "message": "No DB-connected backend found; create a project under backend/ and write api_manifest.json.",
         },
         ensure_ascii=False,
     )
@@ -358,7 +358,7 @@ def read_backend_file(db_alias: str, project_name: str, file_path: str) -> str:
     try:
         target = _resolve_file(db_alias, project_name, file_path)
         if not target.exists():
-            return json.dumps({"ok": False, "error": f"文件不存在: {target}"}, ensure_ascii=False)
+            return json.dumps({"ok": False, "error": f"File not found: {target}"}, ensure_ascii=False)
         content = target.read_text(encoding="utf-8")
         if len(content) > 80000:
             content = content[:80000] + "\n...[TRUNCATED]"
@@ -411,7 +411,7 @@ def save_backend_file(db_alias: str, project_name: str, file_path: str, content:
         if meta:
             port = meta.get("default_port", 8000)
             payload["run_hint"] = (
-                f"本地运行示例：cd workspace/{alias}/backend/{project_name} && "
+                f"Local run: cd workspace/{alias}/backend/{project_name} && "
                 f"pip install -r requirements.txt && "
                 f"uvicorn main:app --reload --port {port}"
             )
@@ -490,7 +490,7 @@ def get_backend_run_info(db_alias: str, project_name: str) -> str:
         proj = _project_root(alias, project_name)
         if not proj.is_dir():
             return json.dumps(
-                {"ok": False, "error": f"工程不存在: backend/{project_name}/"},
+                {"ok": False, "error": f"Project not found: backend/{project_name}/"},
                 ensure_ascii=False,
             )
         meta = _read_manifest_file(proj) or {}
@@ -531,12 +531,12 @@ def get_backend_run_info(db_alias: str, project_name: str) -> str:
                     "DB_TARGET_PASSWORD",
                 ],
                 "studio_notes": (
-                    "Skill Studio 系统预览由 backend_runner 执行 studio_run_command（无 --reload），"
-                    "并注入 studio_env_vars；main.py 须可 import，api_manifest.api_prefix 只能是 /api 或空字符串。"
+                    "Skill Studio preview runs studio_run_command via backend_runner (no --reload), "
+                    "injects studio_env_vars; main.py must import cleanly; api_manifest.api_prefix must be /api or empty string."
                 ),
                 "frontend_integration_hint": (
-                    f"前端 preview.html 或 Vite 开发服请将 API 指向 http://127.0.0.1:{port}{prefix}；"
-                    f"建议在 api_knowledge.md 与 frontend 的 ui_knowledge.md 中写明接口路径。"
+                    f"Point preview.html or Vite dev server at http://127.0.0.1:{port}{prefix}; "
+                    f"document routes in api_knowledge.md and frontend ui_knowledge.md."
                 ),
             },
             ensure_ascii=False,
@@ -550,8 +550,8 @@ verify_fullstack_schema = {
     "function": {
         "name": "verify_fullstack_deliverables",
         "description": (
-            "只读检查当前 saas 工作区全栈交付物是否齐全（backend + frontend + 关键文件）。"
-            "向用户声称「系统/全栈已完成」之前必须调用；system_complete 为 false 时按 gaps 继续写盘。"
+            "Read-only check that full-stack deliverables are complete (backend + frontend + key files). "
+            "Required before telling the user the system is done; if system_complete is false, keep writing files per gaps."
         ),
         "parameters": {
             "type": "object",
@@ -566,8 +566,8 @@ fullstack_contract_schema = {
     "function": {
         "name": "get_fullstack_api_contract",
         "description": (
-            "返回前后端 API 对接契约（路由表、api_base_url、preview_api_block）。"
-            "backend 写完 main.py 后、UI_build 写 preview.html 之前应调用，确保 linked_frontend 正确。"
+            "Return full-stack API contract (routes, api_base_url, preview_api_block). "
+            "Call after backend main.py is ready and before UI_build writes preview.html; verify linked_frontend."
         ),
         "parameters": {
             "type": "object",
@@ -587,20 +587,20 @@ scaffold_schema = {
     "function": {
         "name": "scaffold_fullstack_project",
         "description": (
-            "【新建全栈系统首选】按硬性规范一次性生成 backend + frontend 可启动骨架"
-            "（api_manifest、main.py、requirements、preview.html、知识文档）。"
-            "生成后再 save_backend_file 补充 routers 业务逻辑。"
+            "[Preferred for new full-stack] Scaffold backend + frontend per hard rules "
+            "(api_manifest, main.py, requirements, preview.html, knowledge docs). "
+            "Then use save_backend_file for routers/business logic."
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "db_alias": {"type": "string"},
-                "frontend_project": {"type": "string", "description": "前端目录名，如 my-app-web"},
-                "backend_project": {"type": "string", "description": "可选，默认 {frontend}-api"},
-                "service_title": {"type": "string", "description": "服务/页面标题"},
+                "frontend_project": {"type": "string", "description": "Frontend directory name, e.g. my-app-web"},
+                "backend_project": {"type": "string", "description": "Optional; default {frontend}-api"},
+                "service_title": {"type": "string", "description": "Service/page title"},
                 "write_to_disk": {
                     "type": "boolean",
-                    "description": "为 true 时直接落盘；默认 true",
+                    "description": "When true, write files to disk; default true",
                 },
             },
             "required": ["db_alias", "frontend_project"],
@@ -612,7 +612,7 @@ spec_schema = {
     "type": "function",
     "function": {
         "name": "get_fullstack_generation_spec",
-        "description": "返回全栈生成的硬性规范（流程、禁止项、收尾门禁），新建系统前应先阅读。",
+        "description": "Return full-stack generation hard rules (flow, forbidden patterns, completion gate). Read before new systems.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
 }
@@ -637,7 +637,7 @@ def scaffold_fullstack_project(
     db_alias: str,
     frontend_project: str,
     backend_project: str | None = None,
-    service_title: str = "业务系统",
+    service_title: str = "Business System",
     write_to_disk: bool = True,
 ) -> str:
     from skill_package.core.fullstack_scaffold import build_scaffold_plan, write_scaffold_to_workspace
@@ -650,17 +650,17 @@ def scaffold_fullstack_project(
             alias,
             frontend_project=frontend_project,
             backend_project=backend_project,
-            service_title=service_title or "业务系统",
+            service_title=service_title or "Business System",
         )
         if write_to_disk:
             written = write_scaffold_to_workspace(plan)
             plan["written"] = written["written"]
             plan["message"] = (
-                f"已按规范生成并落盘 backend/{plan['backend_project']} 与 "
-                f"frontend/{plan['frontend_project']}，请继续补充 routers 与页面业务逻辑。"
+                f"Scaffold written to backend/{plan['backend_project']} and "
+                f"frontend/{plan['frontend_project']}; add routers and page logic next."
             )
         else:
-            plan["message"] = "已生成脚手架计划（未写盘），请对各文件调用 save_*_file。"
+            plan["message"] = "Scaffold plan generated (not written); call save_*_file for each artifact."
         return json.dumps(plan, ensure_ascii=False)
     except (ValueError, OSError) as e:
         return json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False)

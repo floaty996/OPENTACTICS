@@ -6,26 +6,27 @@ connect_schema = {
     "function": {
         "name": "database_connect",
         "description": (
-            "连接数据库。源库 source 仅只读（整理资料）；目标库 target 可建表/写入，且只能是 config 中的 target_database。"
-            "推荐 use_workspace_config=true，从 workspace/{db_alias}/config.json 读取连接信息。"
+            "Connect to a database. source mode is read-only (documentation); "
+            "target mode allows DDL/DML and must be config target_database. "
+            "Prefer use_workspace_config=true to read workspace/{db_alias}/config.json."
         ),
         "parameters": {
             "type": "object",
             "properties": {
-                "db_alias": {"type": "string", "description": "工作区别名"},
+                "db_alias": {"type": "string", "description": "Workspace alias"},
                 "db_type": {"type": "string", "enum": ["mysql", "postgresql", "sqlite"]},
                 "connection_mode": {
                     "type": "string",
                     "enum": ["source", "target"],
-                    "description": "source=源库只读；target=目标库可写",
+                    "description": "source=read-only source DB; target=writable target DB",
                 },
                 "use_workspace_config": {
                     "type": "boolean",
-                    "description": "true 时从 config.json 读取 host/user 等",
+                    "description": "When true, read host/user etc. from config.json",
                 },
                 "database": {
                     "type": "string",
-                    "description": "库名；source 模式须为 source_databases 之一；target 模式可省略（用 target_database）",
+                    "description": "Database name; source mode must be in source_databases; target mode may omit (uses target_database)",
                 },
                 "host": {"type": "string"},
                 "port": {"type": "integer"},
@@ -42,7 +43,7 @@ disconnect_schema = {
     "type": "function",
     "function": {
         "name": "database_disconnect",
-        "description": "断开连接",
+        "description": "Disconnect a database session",
         "parameters": {
             "type": "object",
             "properties": {
@@ -58,7 +59,7 @@ disconnect_schema = {
     "database",
     name="database_connect",
     schema=connect_schema,
-    alias=["连接数据库", "客户库连接"],
+    alias=["connect_database", "customer_db_connect"],
 )
 def database_connect(
     db_alias: str,
@@ -90,7 +91,7 @@ def database_connect(
     "database",
     name="database_disconnect",
     schema=disconnect_schema,
-    alias=["断开数据库"],
+    alias=["disconnect_database"],
 )
 def database_disconnect(connection_id: str) -> str:
     return disconnect(connection_id)

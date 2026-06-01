@@ -1,118 +1,118 @@
 # Skill Studio
 
-基于 **DeepSeek** 与 **Agent Skill（智能体技能）** 的本地 SaaS 构建工作台：你只需用自然语言对话，**系统 Skill** 会驱动智能体连接数据库、写后端 API、写前端页面，并在同一工作区内完成全栈预览。
+A local SaaS builder powered by **DeepSeek** and **Agent Skills**: describe what you want in natural language, and **system Skills** drive the agent to connect databases, write backend APIs, build frontend pages, and preview the full stack in one workspace.
 
-> **Skill Studio 的核心不是「聊天」，而是一套可编排、可落盘、可预览的「系统 Skill」体系**——每个 Skill = `SKILL.md` 规范 + Python 工具 + 写入 `workspace/{db_alias}/` 的产物。
+> **Skill Studio is not “just chat”** — it is an orchestratable, on-disk, previewable **system Skill** platform. Each Skill = `SKILL.md` spec + Python tools + artifacts under `workspace/{db_alias}/`.
 
-**界面语言**：Web UI 默认 **English**，右上角 **EN | 中文** 可切换。
+**UI language**: the web UI defaults to **English**. Use **EN | 中文** in the top-right corner to switch.
 
 ---
 
-## 核心：系统 Skill 是什么？
+## Core: What are system Skills?
 
-**系统 Skill** 位于 `skill_package/skills/`，是平台内置、带**真实执行能力**的智能体模块：
+**System Skills** live under `skill_package/skills/`. They are built-in agent modules with **real execution**:
 
-| 组成 | 作用 |
-|------|------|
-| **`SKILL.md`** | 告诉模型「做什么、按什么顺序、禁止什么」；含 YAML frontmatter（`name`、`description`、`version` 等） |
-| **Python 工具** | 通过 `@register_skill_tool` 注册；对话时以 function calling 形式交给 DeepSeek 调用 |
-| **工作区落盘** | 工具执行结果写入 `skill_package/workspace/{db_alias}/`（config、dataset、backend、frontend…） |
+| Piece | Role |
+|-------|------|
+| **`SKILL.md`** | Tells the model what to do, in what order, and what to avoid; YAML frontmatter (`name`, `description`, `version`, …) |
+| **Python tools** | Registered via `@register_skill_tool`; exposed to DeepSeek as function calling during chat |
+| **Workspace writes** | Tool results land in `skill_package/workspace/{db_alias}/` (config, dataset, backend, frontend, …) |
 
-对话时，Studio 会：
+During a conversation, Studio:
 
-1. 加载所选 Skill 的 `SKILL.md` 正文，拼入 system prompt；
-2. 合并这些 Skill 注册的工具 schema，交给 `DeepSeekAgent` 多轮调用；
-3. 工具在本地读写文件、连库、校验契约——**不靠模型「假装写代码」**。
+1. Loads selected Skills’ `SKILL.md` into the system prompt;
+2. Merges registered tool schemas for `DeepSeekAgent` multi-turn tool use;
+3. Tools read/write files, connect to DBs, and validate contracts locally — **not “pretend code” from the model**.
 
-在 **Skill library / Skill 库 → System / 系统** 可浏览每个系统 Skill 的 `SKILL.md`、工具列表与目录结构（**只读**，不可在线改代码；扩展请 fork 或新增目录）。
+In **Skill library → System** you can browse each system Skill’s `SKILL.md`, tools, and tree (**read-only**; do not edit platform code in the UI — fork or add a directory to extend).
 
-### 内置四个系统 Skill
+### Four built-in system Skills
 
 ```mermaid
 flowchart LR
-  subgraph pipeline [典型全栈流水线]
-    D[database\n探库 · dataset]
+  subgraph pipeline [Typical full-stack pipeline]
+    D[database\nprobe · dataset]
     B[backend\nFastAPI · routers]
     U[UI_build\npreview.html]
-    V[verify\n交付校验]
+    V[verify\ndeliverables]
     D --> B --> U --> V
   end
 
-  SA[skill_author\n自定义 Skill 元技能]
+  SA[skill_author\ncustom Skill meta]
 ```
 
-| Skill | 目录 | 做什么 | 主要落盘路径 | 代表工具 |
-|-------|------|--------|--------------|----------|
-| **database** | `skills/database/` | 只读探查源库 / 源文件，整理业务知识 | `dataset/*.md` | `database_connect`、`list_tables`、`describe_table`、`execute_query`、`save_markdown` |
-| **backend** | `skills/backend/` | 生成可运行的 FastAPI 后端 | `backend/{project}/` | `scaffold_fullstack_project`、`save_backend_file`、`patch_backend_file`、`get_fullstack_api_contract`、`verify_fullstack_deliverables` |
-| **UI_build** | `skills/UI_build/` | 生成接库前端与 UI 知识 | `frontend/{project}/` | `save_ui_file`、`patch_ui_file`、`read_database_config`、`get_fullstack_api_contract` |
-| **skill_author** | `skills/skill_author/` | 对话式创建**自定义 Skill**（无 Python 工具链） | `config/custom_skills/` | `create_custom_skill`、`write_custom_skill_file` |
+| Skill | Directory | Purpose | Main output paths | Representative tools |
+|-------|-----------|---------|-------------------|----------------------|
+| **database** | `skills/database/` | Read-only source DB / files; business knowledge | `dataset/*.md` | `database_connect`, `list_tables`, `describe_table`, `execute_query`, `save_markdown` |
+| **backend** | `skills/backend/` | Runnable FastAPI backend | `backend/{project}/` | `scaffold_fullstack_project`, `save_backend_file`, `patch_backend_file`, `get_fullstack_api_contract`, `verify_fullstack_deliverables` |
+| **UI_build** | `skills/UI_build/` | DB-connected frontend and UI knowledge | `frontend/{project}/` | `save_ui_file`, `patch_ui_file`, `read_database_config`, `get_fullstack_api_contract` |
+| **skill_author** | `skills/skill_author/` | Conversational **custom Skill** creation (no Python toolchain) | `config/custom_skills/` | `create_custom_skill`, `write_custom_skill_file` |
 
-四个 Skill **共用同一工作区** `workspace/{db_alias}/` 下的 `config.json`、`manifest.json`，因此 database 写的领域文档、backend 写的 API、UI_build 写的前端可以无缝衔接。
+All four Skills share `config.json` and `manifest.json` under `workspace/{db_alias}/`, so dataset docs, APIs, and frontends stay aligned.
 
-### 全栈生成：系统 Skill 如何协作？
+### Full-stack generation: how system Skills work together
 
-新建一套「能跑起来」的前后端，推荐顺序（已写入 `backend` / `UI_build` 的 `SKILL.md` 与 `skill_package/core/fullstack_orchestration.py`）：
+Recommended order for a runnable frontend + backend (documented in `backend` / `UI_build` `SKILL.md` and `skill_package/core/fullstack_orchestration.py`):
 
-| 步骤 | Skill | 动作 |
-|------|-------|------|
-| 1 | database | 连源库 / 读源文件 → 写 `dataset/` 领域文档；必要时在目标库建表 |
-| 2 | backend | `get_fullstack_generation_spec` → **`scaffold_fullstack_project`** 一键骨架 |
-| 3 | backend | `save_backend_file` 补充 routers；**禁止**相对导入、双轨路由 |
-| 4 | backend + UI_build | `get_fullstack_api_contract` → 按 `route_fetch_map` 对齐路径 |
-| 5 | UI_build | `save_ui_file` 写 `preview.html`（`FULLSTACK_API` + `apiGet` / `apiPost`） |
-| 6 | backend | **`verify_fullstack_deliverables`** → `system_complete: true` 才能对用户说「系统完成」 |
+| Step | Skill | Action |
+|------|-------|--------|
+| 1 | database | Connect source DB / read files → write `dataset/`; create target tables if needed |
+| 2 | backend | `get_fullstack_generation_spec` → **`scaffold_fullstack_project`** one-shot skeleton |
+| 3 | backend | `save_backend_file` for routers; **no** relative imports or dual-route shims |
+| 4 | backend + UI_build | `get_fullstack_api_contract` → align paths via `route_fetch_map` |
+| 5 | UI_build | `save_ui_file` for `preview.html` (`FULLSTACK_API` + `apiGet` / `apiPost`) |
+| 6 | backend | **`verify_fullstack_deliverables`** → only when `system_complete: true` tell the user the system is done |
 
-**写盘门禁**：`save_backend_file` / `save_ui_file` 违反全栈契约会返回 `blocked: true`，从机制上避免生成「看起来写完、预览却 404」的代码。
+**Write gates**: `save_backend_file` / `save_ui_file` return `blocked: true` on contract violations, avoiding “looks done but preview 404” code.
 
-**数据库密码**：智能体通过 `database_connect(use_workspace_config=true)` 读磁盘 `config.json`，**不会**在对话里向用户索要密码（`read_database_config` 里的 `***` 仅为脱敏展示）。
+**Database passwords**: the agent uses `database_connect(use_workspace_config=true)` to read `config.json` on disk — **do not** ask the user for passwords in chat (`***` in `read_database_config` is redaction only).
 
-### 系统 Skill vs 自定义 Skill
+### System Skill vs custom Skill
 
-| | **系统 Skill** | **自定义 Skill** |
-|--|----------------|------------------|
-| 路径 | `skill_package/skills/{name}/` | `config/custom_skills/{skill_id}/` |
-| 工具 | 有 Python 工具（连库、写文件、校验） | 通常只有 `SKILL.md` 指令 |
-| Studio | 只读浏览 | 可上传 zip、在线编辑、删除 |
-| 启用 | `studio_visible: true` 时自动加入对话 | 同上 |
-| 典型用途 | 建库、建 API、建页面 | 领域话术、审批规则、行业 SOP |
+| | **System Skill** | **Custom Skill** |
+|--|------------------|------------------|
+| Path | `skill_package/skills/{name}/` | `config/custom_skills/{skill_id}/` |
+| Tools | Python tools (DB, files, validation) | Usually `SKILL.md` instructions only |
+| Studio | Read-only browse | Upload zip, edit online, delete |
+| Enable | When `studio_visible: true`, joins chat | Same |
+| Typical use | DB, API, pages | Domain tone, approval rules, industry SOP |
 
-自定义 Skill 由 **skill_author** 或 Skill 库上传生成；与系统 Skill **可同时启用**。
+Custom Skills come from **skill_author** or Skill library upload; they can run **alongside** system Skills.
 
-更细的字段与工具说明见各 Skill 目录下的 `SKILL.md`（[database](skill_package/skills/database/SKILL.md)、[backend](skill_package/skills/backend/SKILL.md)、[UI_build](skill_package/skills/UI_build/SKILL.md)、[skill_author](skill_package/skills/skill_author/SKILL.md)）。
-
----
-
-## 功能概览
-
-| 能力 | 说明 |
-|------|------|
-| **系统 Skill 体系** | 上文核心能力：`SKILL.md` + 工具 + 工作区落盘，驱动全栈交付 |
-| **多 SaaS 工作区** | 每个 `db_alias` 独立目录，含配置、产物与对话历史 |
-| **智能体对话** | 流式回复；按已启用 Skill 自动挂载工具 |
-| **全栈预览** | Studio 自动启 uvicorn、iframe 预览、注入 `__STUDIO_API_BASE__` |
-| **运行错误提醒** | 预览 4xx/5xx 时引导回到对话修复 |
-| **后台文件 / Skill 库** | 浏览编辑工作区文件；浏览系统 / 自定义 Skill |
-| **中英文界面** | 默认英文；`studio/static/i18n.js` |
+Per-Skill details: [database](skill_package/skills/database/SKILL.md), [backend](skill_package/skills/backend/SKILL.md), [UI_build](skill_package/skills/UI_build/SKILL.md), [skill_author](skill_package/skills/skill_author/SKILL.md).
 
 ---
 
-## 系统架构
+## Feature overview
+
+| Capability | Description |
+|------------|-------------|
+| **System Skill platform** | `SKILL.md` + tools + workspace writes for full-stack delivery |
+| **Multi-SaaS workspaces** | Each `db_alias` has its own config, artifacts, and chat history |
+| **Agent chat** | Streaming replies; tools auto-mounted from enabled Skills |
+| **Full-stack preview** | Studio starts uvicorn, iframe preview, injects `__STUDIO_API_BASE__` |
+| **Runtime error hints** | Preview 4xx/5xx nudges you back to chat to fix |
+| **Workspace files / Skill library** | Browse and edit workspace files; browse system and custom Skills |
+| **EN / 中文 UI** | Default English; `studio/static/i18n.js` |
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart TB
-  subgraph browser [浏览器]
+  subgraph browser [Browser]
     UI[Skill Studio Web UI]
   end
 
   subgraph studio [studio/]
     API[FastAPI server.py]
-    Runner[backend_runner 预览后端]
-    LogMon[runtime_log_monitor 错误检测]
+    Runner[backend_runner preview]
+    LogMon[runtime_log_monitor errors]
   end
 
   subgraph agents [agents/]
-    DS[DeepSeekAgent 工具循环 + 流式输出]
+    DS[DeepSeekAgent tool loop + stream]
   end
 
   subgraph skills [skill_package/skills/]
@@ -123,7 +123,7 @@ flowchart TB
   end
 
   subgraph custom [config/custom_skills/]
-    CS[用户自定义 Skill]
+    CS[User custom Skills]
   end
 
   subgraph ws [skill_package/workspace/]
@@ -140,275 +140,289 @@ flowchart TB
   API --> LogMon
 ```
 
-**数据流简述**
+**Data flow (short)**
 
-1. 用户选择 **saas**（`db_alias`），配置 MySQL / DeepSeek。
-2. 对话进入 `stream_chat`：加载**系统 Skill** 的 `SKILL.md` + 工具 schema → `DeepSeekAgent` 多轮调用工具写盘。
-3. **系统预览** 读取 `api_manifest.json`，启动 uvicorn，向 `preview.html` 注入 `__STUDIO_API_BASE__`。
+1. User picks a **saas** (`db_alias`) and configures MySQL / DeepSeek.
+2. Chat hits `stream_chat`: load system Skill `SKILL.md` + tool schemas → `DeepSeekAgent` tool rounds write to disk.
+3. **System preview** reads `api_manifest.json`, starts uvicorn, injects `__STUDIO_API_BASE__` into `preview.html`.
 
 ---
 
-## 环境要求
+## Requirements
 
 - Python 3.10+
-- MySQL（源库 + 建议独立目标库账号）
-- Node.js（可选，用于部分前端 `npm run dev`；Studio 整页预览以 `preview.html` 为主）
-- DeepSeek API Key（[https://platform.deepseek.com](https://platform.deepseek.com)）
+- MySQL (source DB + recommended separate target DB account)
+- Node.js (optional, for some `npm run dev` frontends; Studio full-page preview uses `preview.html`)
+- DeepSeek API key ([https://platform.deepseek.com](https://platform.deepseek.com))
 
 ---
 
-## 快速开始
+## Quick start
 
-### 1. 安装依赖
+### 1. Install dependencies
 
 ```bash
 cd /path/to/skills_self
 
 pip install -r requirements-studio.txt
 pip install -r skill_package/requirements-database.txt
-# 若需命令行直接调智能体（非 Studio）
+# For CLI agent use outside Studio:
 pip install -r requirements-agent.txt
 ```
 
-### 2. 配置 DeepSeek
+### 2. Configure the LLM API
+
+**DeepSeek** (default for chat):
 
 ```bash
 cp config/deepseek.example.json config/deepseek.json
 ```
 
-编辑 `config/deepseek.json`，填入 `api_key`；可按需调整 `model`、`max_tool_rounds`、`max_tokens`、`timeout_seconds`。
+Edit `config/deepseek.json` with your `api_key`; adjust `model`, `max_tool_rounds`, `max_tokens`, `timeout_seconds` as needed.
 
-> **注意**：勿将含真实密钥的 `config/deepseek.json` 提交到 Git。
+**Google Gemini** (optional): in **New saas / Edit saas**, choose **Google Gemini** as the chat provider and enter an API key (stored in that saas `workspace/{db_alias}/config.json`). You can also copy `config/gemini.example.json` to `config/gemini.json` as a global fallback.
 
-### 3. 启动 Studio
+> **Do not** commit `config/deepseek.json` or `config/gemini.json` with real API keys to Git.
+
+### 3. Start Studio
 
 ```bash
 python run_studio.py
 ```
 
-浏览器访问：**http://127.0.0.1:8765**（请通过此地址打开，不要直接双击 HTML 文件）
+Open **http://127.0.0.1:8765** in the browser (use this URL; do not open HTML files directly).
 
-修改 `studio/`、`agents/` 下代码时，开发模式会自动热重载；改 Skill 或工作区模板后刷新页面即可。切换语言后无需重启服务。
+In dev mode, changes under `studio/` and `agents/` hot-reload; refresh after Skill or workspace template changes. Language switch does not require a restart.
 
-### 4. 新建 saas，用系统 Skill 对话建系统
+### 4. Create a saas and build via system Skills
 
-1. **New saas**：填写 `db_alias`、MySQL（源库只读 + 目标库可写；目标库留空则用本地 SQLite `data/app.db`）。
-2. 进入 **Chat**，用自然语言描述需求，例如：
-   - 「连接源库 `basic_data`，整理站点与员工表结构写到 dataset」
-   - 「基于 dataset 做站点人员管理系统：后端 API + 前端 preview」
-3. 智能体按 **database → backend → UI_build** 顺序调用工具，产物写入 `workspace/{db_alias}/`。
-4. **System preview** 自动启动后端并预览 `preview.html`。
+1. **New saas**: set `db_alias`, MySQL (read-only source + writable target; empty target uses local SQLite `data/app.db`).
+2. Open **Chat** and describe your goal, for example:
+   - “Connect source DB `basic_data`, document station and employee tables into dataset”
+   - “Build a station personnel system from dataset: backend API + frontend preview”
+3. The agent calls tools in **database → backend → UI_build** order; output goes to `workspace/{db_alias}/`.
+4. **System preview** starts the backend and shows `preview.html`.
 
-在 **Skill library → System** 可提前阅读各 Skill 的规范与工具，了解智能体会被允许做什么。
+In **Skill library → System** you can read each Skill’s rules and tools before chatting.
 
 ---
 
-## 工作区目录（系统 Skill 的落盘结果）
+## Workspace layout (system Skill output)
 
-路径：`skill_package/workspace/{db_alias}/` — 下列目录分别由对应系统 Skill 写入：
+Path: `skill_package/workspace/{db_alias}/` — directories are written by the corresponding system Skill:
 
 ```
 {db_alias}/
-├── config.json           # 连接配置（源库列表 + 目标库 + storage_mode）
-├── data/app.db           # storage_mode=local 时的 SQLite（未配 MySQL 目标库时）
-├── dataset/              # 领域知识 Markdown（database skill）
-├── backend/              # FastAPI 工程（backend skill）
+├── config.json           # Connections (source list + target + storage_mode)
+├── data/app.db           # SQLite when storage_mode=local (no MySQL target)
+├── dataset/              # Domain knowledge Markdown (database skill)
+├── backend/              # FastAPI projects (backend skill)
 │   └── {project}/
 │       ├── main.py
 │       ├── api_manifest.json
-│       └── .studio_uvicorn.log   # Studio 启动后端时的日志
-├── frontend/             # 前端工程（UI_build skill）
+│       └── .studio_uvicorn.log   # Log when Studio starts the backend
+├── frontend/             # Frontend projects (UI_build skill)
 │   └── {project}/
-│       ├── preview.html    # Studio 整页预览入口（推荐）
+│       ├── preview.html    # Studio full-page preview entry (recommended)
 │       └── ui_knowledge.md
-├── conversations/        # 对话记录 JSON
-└── manifest.json         # 工程注册与关联关系
+├── conversations/        # Chat history JSON
+└── manifest.json         # Project registry and links
 ```
 
-更细的字段说明见 [skill_package/workspace/README.md](skill_package/workspace/README.md)。
+Field details: [skill_package/workspace/README.md](skill_package/workspace/README.md).
 
 ---
 
-## 扩展：自定义 Skill 与新增系统 Skill
+## Extending: custom Skills and new system Skills
 
-### 自定义 Skill（无 Python 工具）
+### Custom Skill (no Python tools)
 
-- **上传**：Skill 库 → Custom → 上传 **zip**（须含 `SKILL.md`）→ `config/custom_skills/`。
-- **对话创建**：Skill 库 → **Create Skill** → 由 **skill_author** 生成。
-- `studio_visible: true` 时与系统 Skill 一并加入对话；适合领域话术、审批规则等**纯指令**场景。
+- **Upload**: Skill library → Custom → upload a **zip** (must contain `SKILL.md`) → `config/custom_skills/`.
+- **Chat create**: Skill library → **Create Skill** → **skill_author** generates files.
+- With `studio_visible: true`, joins chat with system Skills; good for **instruction-only** domain rules.
 
-细则见 [skill_author/SKILL.md](skill_package/skills/skill_author/SKILL.md)。
+See [skill_author/SKILL.md](skill_package/skills/skill_author/SKILL.md).
 
-### 新增系统 Skill（含工具）
+### New system Skill (with tools)
 
-1. 在 `skill_package/skills/{name}/` 添加 `SKILL.md`（frontmatter：`name`、`description`）。
-2. 在 `scripts/` 用 `@register_skill_tool("{name}", ...)` 注册工具。
-3. 重启 Studio；Skill 库与对话会自动加载。
+1. Add `skill_package/skills/{name}/SKILL.md` (frontmatter: `name`, `description`).
+2. Register tools in `scripts/` with `@register_skill_tool("{name}", ...)`.
+3. Restart Studio; Skill library and chat pick it up.
 
-工具注册表见 `skill_package/core/registry.py`；全栈契约与门禁见 `skill_package/core/fullstack_contract.py`、`fullstack_enforce.py`。
-
----
-
-## Studio 界面说明
-
-| 入口 | 作用 |
-|------|------|
-| **EN \| 中文** | 切换界面语言（默认 English）；偏好保存在浏览器 `localStorage` |
-| **Chat / 对话** | 与智能体交互；支持多轮历史、终止生成 |
-| **System preview / 系统预览** | 选择前端工程、自动启后端、iframe 预览、`preview.html` |
-| **Open in new tab / 新窗口打开** | 无 iframe 限制地打开预览页 |
-| **Restart service / 重启服务** | 重启当前关联的 FastAPI 进程（仅终止监听端口的进程，不影响 Studio 自身） |
-| **Backend log / 后端日志** | 查看 `.studio_uvicorn.log` |
-| **Back to chat / 返回对话** | 从预览/后台文件/Skill 库回到对话；有未处理运行错误时 **红点闪烁** |
-| **Workspace files / 后台文件** | 树形浏览并编辑 `dataset` / `frontend` / `backend` 文件 |
-| **Skill library / Skill 库** | 系统 / 自定义 Skill 列表；自定义 Skill 可上传 zip、在线编辑、删除 |
-| **Create Skill / 创建 Skill** | 进入 Skill 创建助手对话，生成自定义 Skill |
-
-### 界面语言（i18n）
-
-- 文案定义：`studio/static/i18n.js`（`en` / `zh` 字典，全局 `t(key)`）。
-- 静态 HTML 使用 `data-i18n`、`data-i18n-html`、`data-i18n-placeholder` 等属性。
-- 动态列表（项目卡片、对话历史、预览状态等）在 `studio/static/app.js` 中通过 `t()` 渲染；切换语言时自动刷新当前视图。
-- **智能体对话内容**（用户输入与 AI 回复）不受界面语言影响。
-
-### 系统预览与前后端联调
-
-- Studio 读取 `api_manifest.json` 的 `default_port`、`api_prefix`，并**探测**真实路由，向 `preview.html` 注入 `window.__STUDIO_API_BASE__`（前端通过 `FULLSTACK_API` 块中的 `apiGet` / `apiPost` 发请求）。
-- 前端请求路径须与 `main.py` 路由及 `get_fullstack_api_contract` 契约一致；`api_prefix` 只能是 `"/api"` 或 `""`，勿写说明文字。
-- 预览期间若日志出现新的 4xx/5xx，可「Back to chat / 返回对话处理」或「Ignore / 忽略」；同一条错误不会重复提示。
+Registry: `skill_package/core/registry.py`. Full-stack contract and gates: `fullstack_contract.py`, `fullstack_enforce.py`.
 
 ---
 
-## 项目结构
+## Studio UI
+
+| Entry | Purpose |
+|-------|---------|
+| **EN \| 中文** | UI language (default English); stored in browser `localStorage` |
+| **Chat** | Agent conversation; multi-turn history, stop generation |
+| **System preview** | Pick frontend project, auto-start backend, iframe `preview.html` |
+| **Open in new tab** | Preview without iframe limits |
+| **Restart service** | Restart linked FastAPI (LISTEN process only; Studio stays up) |
+| **Backend log** | View `.studio_uvicorn.log` |
+| **Back to chat** | Return from preview / files / Skill library; red dot if unhandled runtime errors |
+| **Workspace files** | Tree edit `dataset` / `frontend` / `backend` |
+| **Skill library** | System / custom Skills; upload zip, edit, delete custom Skills |
+| **Create Skill** | Skill creation assistant chat |
+
+### UI i18n
+
+- Strings: `studio/static/i18n.js` (`en` / `zh`, global `t(key)`).
+- Static HTML: `data-i18n`, `data-i18n-html`, `data-i18n-placeholder`, etc.
+- Dynamic UI in `studio/static/app.js` via `t()`; switching language refreshes the current view.
+- **Agent messages** (user + AI) are not translated with UI language.
+
+### System preview and API integration
+
+- Studio reads `api_manifest.json` `default_port`, `api_prefix`, probes routes, injects `window.__STUDIO_API_BASE__` (`apiGet` / `apiPost` in the `FULLSTACK_API` block).
+- Frontend paths must match `main.py` and `get_fullstack_api_contract`; `api_prefix` is only `"/api"` or `""`, not prose.
+- New 4xx/5xx in logs during preview: **Back to chat** or **Ignore**; the same error is not repeated.
+
+---
+
+## Project structure
 
 ```
 skills_self/
-├── run_studio.py              # 启动 Web Studio
+├── run_studio.py              # Start Web Studio
 ├── requirements-studio.txt
 ├── config/
-│   ├── deepseek.json          # API 配置（本地，勿提交密钥）
+│   ├── deepseek.json          # API config (local; do not commit secrets)
 │   ├── deepseek.example.json
-│   ├── studio_state.json      # 当前选中的 saas 等状态
-│   └── custom_skills/         # 用户自定义 Skill（可上传 zip / 对话生成）
+│   ├── studio_state.json      # Selected saas, etc.
+│   └── custom_skills/         # User custom Skills (zip / chat)
 │       └── {skill_id}/
 │           └── SKILL.md
 ├── agents/
-│   └── deepseek_backend.py    # DeepSeek 工具循环与流式输出
+│   └── deepseek_backend.py    # DeepSeek tool loop + streaming
 ├── studio/
-│   ├── server.py              # FastAPI 路由
-│   ├── services.py            # 业务编排、对话、配置
-│   ├── backend_runner.py      # 预览时启动/探测后端
-│   ├── runtime_log_monitor.py # 日志错误解析
+│   ├── server.py              # FastAPI routes
+│   ├── services.py            # Orchestration, chat, config
+│   ├── backend_runner.py      # Preview backend start / probe
+│   ├── runtime_log_monitor.py # Log error parsing
 │   ├── system_preview.py
-│   ├── artifacts.py           # 后台文件树
-│   └── static/                # Web 前端
+│   ├── artifacts.py           # Workspace file tree
+│   └── static/                # Web UI
 │       ├── index.html
-│       ├── i18n.js            # 中英文文案
+│       ├── i18n.js            # EN / 中文 strings
 │       ├── app.js
 │       └── app.css
 └── skill_package/
-    ├── skills/                # 系统 Skill：database / backend / UI_build / skill_author
-    ├── core/                  # 注册表、全栈契约/门禁/脚手架、编排文案
-    └── workspace/             # 各 saas 产物（用户数据）
+    ├── skills/                # System Skills: database / backend / UI_build / skill_author
+    ├── core/                  # Registry, full-stack contract / gates / scaffold, orchestration
+    └── workspace/             # Per-saas artifacts (user data)
 ```
 
 ---
 
-## 配置参考
+## Configuration reference
 
 ### `config/deepseek.json`
 
-| 字段 | 说明 | 默认 |
-|------|------|------|
-| `api_key` | DeepSeek API 密钥 | 必填 |
-| `base_url` | API 地址 | `https://api.deepseek.com` |
-| `model` | 模型名 | `deepseek-chat` |
-| `max_tool_rounds` | 单轮对话最多工具循环次数 | `50` |
-| `max_tokens` | 单次生成 token 上限 | `8192` |
-| `timeout_seconds` | HTTP 超时（秒） | `300` |
+| Field | Description | Default |
+|-------|-------------|---------|
+| `api_key` | DeepSeek API key | Required |
+| `base_url` | API base URL | `https://api.deepseek.com` |
+| `model` | Model name | `deepseek-chat` |
+| `max_tool_rounds` | Max tool loops per user turn | `50` |
+| `max_tokens` | Max tokens per generation | `8192` |
+| `timeout_seconds` | HTTP timeout (seconds) | `300` |
 
-### `backend/.../api_manifest.json`（节选）
+### Per-saas LLM (`workspace/{db_alias}/config.json`)
 
-| 字段 | 说明 |
-|------|------|
-| `linked_frontend` | 关联的前端工程名 |
-| `default_port` | uvicorn 端口 |
-| `api_prefix` | 须与 `main.py` 实际挂载一致 |
+| Field | Description |
+|-------|-------------|
+| `llm_provider` | `deepseek` (default) or `gemini` |
+| `gemini_api_key` | Gemini key when provider is `gemini` |
+| `gemini_model` | e.g. `gemini-2.0-flash` |
+
+### `backend/.../api_manifest.json` (excerpt)
+
+| Field | Description |
+|-------|-------------|
+| `linked_frontend` | Linked frontend project name |
+| `default_port` | uvicorn port |
+| `api_prefix` | Must match `main.py` mount |
 
 ---
 
-## 开发与测试
+## Development and testing
 
-系统 Skill 的扩展方式见上文 **[扩展：自定义 Skill 与新增系统 Skill](#扩展自定义-skill-与新增系统-skill)**。
+See **[Extending: custom Skills and new system Skills](#extending-custom-skills-and-new-system-skills)** above.
 
 ```bash
 python database_test.py          # database Skill
 python ui_build_test.py          # UI_build Skill
-python skill_invoke_example.py   # 工具调用示例
+python skill_invoke_example.py   # Tool invocation example
 ```
 
-**代码边界**：系统 Skill 与平台在 `skill_package/skills/`、`skill_package/core/`、`studio/`；用户 saas 产物在 `workspace/{db_alias}/`，默认不由平台批量改写。
+**Boundaries**: platform code in `skill_package/skills/`, `skill_package/core/`, `studio/`; user saas output in `workspace/{db_alias}/` (not bulk-rewritten by default).
 
 ---
 
-## 常见问题
+## FAQ
 
-**Q：界面是英文的，如何切回中文？**  
-点击页面右上角 **中文** 即可；下次访问会记住你的选择。默认语言为 English。
+**Q: UI is in English — how do I switch to Chinese?**  
+Click **中文** in the top-right; your choice is remembered. Default is English.
 
-**Q：新建 saas 第一次启动后端总是失败？**  
-常见原因：① **首次**会 `pip install -r requirements.txt`，需等待 1–2 分钟后再点「Restart service / 重启服务」；② `main.py` 用了 `from .routers` 等**相对导入**（Studio 用 `uvicorn main:app`，须改为 `from routers import ...`）；③ `main.py` 语法/NameError。打开 **Backend log / 后端日志** 查看 Traceback，或在对话中让智能体修复。
+**Q: First backend start for a new saas fails?**  
+Common causes: ① **First** run runs `pip install -r requirements.txt` — wait 1–2 minutes, then **Restart service**; ② `main.py` uses **relative imports** like `from .routers` (Studio runs `uvicorn main:app` — use `from routers import ...`); ③ syntax / NameError in `main.py`. Check **Backend log** or ask the agent to fix in chat.
 
-**Q：点击「重启服务」后整个 Studio 挂了？**  
-请更新到最新代码并硬刷新页面。旧版会误杀占用 8000 端口的客户端进程；现已改为只终止 **LISTEN** 状态的进程。
+**Q: “Restart service” killed all of Studio?**  
+Update to latest code and hard-refresh. Older builds could kill clients on port 8000; now only **LISTEN** processes are terminated.
 
-**Q：run_studio.py 报 python-multipart 未安装？**  
-执行 `pip install python-multipart` 或重新 `pip install -r requirements-studio.txt`。
+**Q: `run_studio.py` says python-multipart is missing?**  
+Run `pip install python-multipart` or `pip install -r requirements-studio.txt` again.
 
-**Q：系统预览有数据但和 MySQL 不一致？**  
-检查 `config.json` 的 `host` / `user` 是否完整，以及后端 `database.py` 是否误连本地 SQLite 演示库。智能体应通过 `database_connect(use_workspace_config=true)` 读工作区配置，**无需在聊天里提供数据库密码**；若 `host`/`user` 为空，请在 Studio **编辑 saas** 页补全。
+**Q: Preview has data but it does not match MySQL?**  
+Check `config.json` `host` / `user` and whether backend `database.py` points at a local SQLite demo DB. The agent should use `database_connect(use_workspace_config=true)` — **no password in chat**. If `host`/`user` are empty, fill them on the **Edit saas** page.
 
-**Q：预览页空白或 API 404？**  
-检查 `preview.html` 中 `API_BASE` 是否与后端真实地址一致；在系统预览中 **重启服务**，查看 **后端日志** 是否有 404/500。
+**Q: Blank preview or API 404?**  
+Ensure `preview.html` `API_BASE` matches the real backend; **Restart service** in system preview and check **Backend log** for 404/500.
 
-**Q：智能体在对话里问我要数据库密码？**  
-不应发生。密码保存在 `workspace/{db_alias}/config.json`；工具 `read_database_config` 返回 `***` 仅为脱敏。让智能体使用 `database_connect(use_workspace_config=true)` 即可。
+**Q: Agent asks for my database password in chat?**  
+It should not. Passwords live in `workspace/{db_alias}/config.json`; `read_database_config` shows `***` for redaction. Use `database_connect(use_workspace_config=true)`.
 
-**Q：智能体回复说到一半停了？**  
-可能是工具轮次或网络超时；输入「请继续」补全。可在 `deepseek.json` 中增大 `timeout_seconds`、`max_tokens`。
+**Q: Agent reply stops mid-way?**  
+Tool rounds or network timeout; say “please continue”. Increase `timeout_seconds` / `max_tokens` in `deepseek.json`.
 
-**Q：智能体话太多、像自言自语？**  
-平台已约束「只输出结论、工具静默执行」；建议 **新开对话** 并重启 Studio 使配置生效。
+**Q: Agent talks too much?**  
+Platform prompts favor conclusions and silent tool runs; start a **new chat** and restart Studio after config changes.
 
-**Q：取消错误提示后，再进预览又弹？**  
-已按「进入预览时建立基线、仅提示新增错误」处理；可点「Ignore / 忽略」跳过单条错误。请硬刷新到最新静态资源（`index.html` 引用的 `?v=` 版本）并重启 Studio。
+**Q: Error toast returns after I dismissed it and re-open preview?**  
+Preview establishes a baseline; only **new** errors are shown. Use **Ignore** for one-off cases. Hard-refresh static assets (`index.html` `?v=` version) and restart Studio.
 
-**Q：上传自定义 Skill 后列表没出现？**  
-须上传 **zip 压缩包**（非文件夹）；zip 内须含 `SKILL.md`。上传成功后切到 Skill 库 **Custom / 自定义** 标签查看。若 `skill_id` 与系统 Skill 重名，只会出现在自定义列表。
+**Q: Custom Skill upload but nothing in the list?**  
+Upload a **zip** (not a folder) containing `SKILL.md`. Check Skill library **Custom**. If `skill_id` collides with a system Skill name, it appears only under Custom.
 
-**Q：系统 Skill 和自定义 Skill 有什么区别？**  
-系统 Skill（`skill_package/skills/`）带 **Python 工具**，能连库、写文件、跑全栈校验，Studio 内**只读**浏览。自定义 Skill（`config/custom_skills/`）通常只有 `SKILL.md` 指令，适合领域规则；可上传 zip 或由 **skill_author** 生成。二者可同时 `studio_visible: true` 启用。
+**Q: System Skill vs custom Skill?**  
+System Skills (`skill_package/skills/`) have **Python tools** (DB, files, full-stack checks); Studio browse is **read-only**. Custom Skills (`config/custom_skills/`) are usually `SKILL.md` only; upload zip or use **skill_author**. Both can be enabled with `studio_visible: true`.
 
-**Q：智能体不按 Skill 规范写代码怎么办？**  
-全栈场景有 **写盘门禁**（`blocked: true`）和 `verify_fullstack_deliverables`。可在对话中明确要求「先 `get_fullstack_generation_spec` 再 `scaffold_fullstack_project`」，或在 **Skill library → backend** 阅读硬性规范后重新描述需求。
+**Q: Agent ignores Skill rules?**  
+Full-stack has **write gates** (`blocked: true`) and `verify_fullstack_deliverables`. Ask for `get_fullstack_generation_spec` then `scaffold_fullstack_project`, or read **Skill library → backend** and restate requirements.
 
-**Q：自定义 Skill 和系统 Skill 能一起用吗？**  
-可以。`SKILL.md` 中 `studio_visible: true` 的 Skill 会在对话中一并启用（系统 + 自定义）。
-
----
-
-## 许可证
-
-本仓库声明许可证**PolyForm Noncommercial License 1.0.0**，具体查看`LICENSE.txt`
+**Q: Custom and system Skills together?**  
+Yes. Any Skill with `studio_visible: true` in `SKILL.md` is enabled in chat.
 
 ---
 
-## 相关文档
+## License
 
-- [工作区目录说明](skill_package/workspace/README.md)
-- **系统 Skill 规范（必读）**
-  - [database/SKILL.md](skill_package/skills/database/SKILL.md) — 源库/目标库、dataset
-  - [backend/SKILL.md](skill_package/skills/backend/SKILL.md) — FastAPI、全栈脚手架与门禁
-  - [UI_build/SKILL.md](skill_package/skills/UI_build/SKILL.md) — 前端、FULLSTACK_API 契约
-  - [skill_author/SKILL.md](skill_package/skills/skill_author/SKILL.md) — 自定义 Skill
-- 平台核心：`skill_package/core/fullstack_contract.py`、`fullstack_enforce.py`、`fullstack_orchestration.py`
+This repository is licensed under the **PolyForm Noncommercial License 1.0.0**. See [LICENSE.txt](LICENSE.txt).
+
+Copyright (c) winnow 2026/05
+
+---
+
+## Related docs
+
+- [Workspace layout](skill_package/workspace/README.md)
+- **System Skill specs (recommended)**
+  - [database/SKILL.md](skill_package/skills/database/SKILL.md) — source/target DB, dataset
+  - [backend/SKILL.md](skill_package/skills/backend/SKILL.md) — FastAPI, scaffold, gates
+  - [UI_build/SKILL.md](skill_package/skills/UI_build/SKILL.md) — frontend, FULLSTACK_API contract
+  - [skill_author/SKILL.md](skill_package/skills/skill_author/SKILL.md) — custom Skills
+- Platform core: `skill_package/core/fullstack_contract.py`, `fullstack_enforce.py`, `fullstack_orchestration.py`

@@ -6,19 +6,19 @@ query_schema = {
     "function": {
         "name": "database_query",
         "description": (
-            "执行 SQL。源库连接仅只读；目标库连接可 CREATE/INSERT 等（仅限 target_database）。"
-            "须先 database_connect(connection_mode=source|target)。"
+            "Execute SQL. Source connections are read-only; target connections allow CREATE/INSERT etc. "
+            "(target_database only). Requires database_connect(connection_mode=source|target) first."
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "connection_id": {
                     "type": "string",
-                    "description": "database_connect 返回的连接 id",
+                    "description": "Connection id returned by database_connect",
                 },
                 "sql": {
                     "type": "string",
-                    "description": "SQL 语句",
+                    "description": "SQL statement",
                 },
             },
             "required": ["connection_id", "sql"],
@@ -31,7 +31,7 @@ query_schema = {
     "database",
     name="database_query",
     schema=query_schema,
-    alias=["查数据库", "执行SQL", "数据库查询"],
+    alias=["query_database", "execute_sql"],
 )
 def database_query(connection_id: str, sql: str) -> str:
     return execute_query(connection_id, sql)

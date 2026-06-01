@@ -1,9 +1,0 @@
-{
-  "project_name": "station-personnel",
-  "db_alias": "test2",
-  "has_database_connection": true,
-  "stack": "react-vite",
-  "api_mode": "proxy",
-  "created_at": "{YYYY-MM-DD}",
-  "description": "已接入数据库的前端工程，生成或更新时请保持此文件"
-}

@@ -31,8 +31,8 @@ save_schema = {
     "function": {
         "name": "save_database_config",
         "description": (
-            "保存到 workspace/{db_alias}/config.json。"
-            "source_databases 可选；未填 target_database 时使用本地 SQLite（data/app.db）存后端数据。"
+            "Save to workspace/{db_alias}/config.json. "
+            "source_databases optional; when target_database is empty, backend data uses local SQLite (data/app.db)."
         ),
         "parameters": {
             "type": "object",
@@ -41,19 +41,19 @@ save_schema = {
                 "db_type": {"type": "string", "enum": ["mysql", "postgresql", "sqlite"]},
                 "host": {"type": "string"},
                 "port": {"type": "integer"},
-                "user": {"type": "string", "description": "源库只读账号（建议）"},
+                "user": {"type": "string", "description": "Source DB read-only account (recommended)"},
                 "password": {"type": "string"},
                 "source_databases": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "已有源库名列表，智能体只读整理",
+                    "description": "Source database names (agent read-only documentation)",
                 },
                 "target_database": {
                     "type": "string",
-                    "description": "目标库名，智能体唯一可 DDL/DML 的库",
+                    "description": "Target database name (only DB where agent may DDL/DML)",
                 },
-                "target_user": {"type": "string", "description": "目标库账号，省略则用 user"},
-                "target_password": {"type": "string", "description": "目标库密码，省略则用 password"},
+                "target_user": {"type": "string", "description": "Target DB user; defaults to user"},
+                "target_password": {"type": "string", "description": "Target DB password; defaults to password"},
                 "file_path": {"type": "string"},
             },
             "required": ["db_alias", "db_type"],
@@ -65,7 +65,7 @@ list_schema = {
     "type": "function",
     "function": {
         "name": "list_database_configs",
-        "description": "列举 workspace 下 config.json（密码脱敏）",
+        "description": "List workspace config.json files (passwords redacted)",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
 }
@@ -75,8 +75,8 @@ read_schema = {
     "function": {
         "name": "read_database_config",
         "description": (
-            "读取 config.json（返回给模型的 password 为 *** 脱敏，磁盘仍为真实密码；"
-            "勿将 *** 传给 save_database_config）"
+            "Read config.json (password fields returned as *** to the model; disk keeps real secrets; "
+            "never pass *** to save_database_config)"
         ),
         "parameters": {
             "type": "object",
@@ -90,7 +90,7 @@ read_manifest_schema = {
     "type": "function",
     "function": {
         "name": "read_workspace_manifest",
-        "description": "读取 manifest.json",
+        "description": "Read manifest.json",
         "parameters": {
             "type": "object",
             "properties": {"db_alias": {"type": "string"}},
@@ -118,14 +118,14 @@ def save_database_config(
         alias = validate_db_alias(db_alias)
         kind = db_type.strip().lower()
         if kind not in _SUPPORTED_DB:
-            raise ValueError(f"不支持的 db_type: {db_type}")
+            raise ValueError(f"Unsupported db_type: {db_type}")
 
         sources = parse_database_list(source_databases or [])
         target = ""
         if target_database and str(target_database).strip():
             target = parse_database_list([target_database])[0]
         if target and target in sources:
-            raise ValueError("target_database 不能与 source_databases 重复")
+            raise ValueError("target_database must not duplicate an entry in source_databases")
 
         storage_mode = "mysql" if target else "local"
         local_rel = DEFAULT_LOCAL_SQLITE_REL
@@ -133,14 +133,14 @@ def save_database_config(
         if storage_mode == "local":
             ensure_local_sqlite(alias, rel_path=local_rel)
             if sources and not all([host, user]):
-                raise ValueError("配置了源库时须提供 host、user")
+                raise ValueError("When source databases are configured, host and user are required")
             if sources and is_redacted_secret(password):
-                raise ValueError("配置了源库时须提供有效 password")
+                raise ValueError("When source databases are configured, a valid password is required")
         elif kind == "sqlite":
             if not file_path or not str(file_path).strip():
-                raise ValueError("sqlite 须提供 file_path")
+                raise ValueError("sqlite requires file_path")
         elif not all([host, user]):
-            raise ValueError(f"{kind} 须提供 host、user")
+            raise ValueError(f"{kind} requires host and user")
 
         ensure_workspace(alias)
         path = config_path(alias)
@@ -173,9 +173,8 @@ def save_database_config(
             payload["source_files"] = normalize_source_files(existing.get("source_files"))
         if storage_mode == "mysql" and sources and is_redacted_secret(payload.get("password")):
             raise ValueError(
-                "未提供有效数据库密码。read_database_config 返回的 *** 仅为脱敏展示，"
-                "不能写回 config.json；请让用户在 Studio 初始化页填写密码，"
-                "或 save_database_config 传入真实 password。"
+                "No valid database password provided. *** from read_database_config is redacted only; "
+                "ask the user to set password in Studio init or pass a real password to save_database_config."
             )
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         touch_manifest(
@@ -186,9 +185,9 @@ def save_database_config(
             target_database=target,
         )
         msg = (
-            "目标库未配置：后端数据写入 workspace 本地 SQLite（data/app.db）。"
+            "No target DB configured: backend data will use workspace local SQLite (data/app.db)."
             if storage_mode == "local"
-            else "源库只读整理；建表/写入仅允许 target_database。"
+            else "Source DBs are read-only; DDL/DML allowed on target_database only."
         )
         return json.dumps(
             {
@@ -216,7 +215,7 @@ def list_database_configs() -> str:
             if isinstance(data, dict):
                 configs.append({"db_alias": alias, "config": mask_config_secrets(data), "path": str(p)})
         except (json.JSONDecodeError, OSError):
-            configs.append({"db_alias": alias, "error": "无法解析"})
+            configs.append({"db_alias": alias, "error": "Failed to parse"})
     return json.dumps({"ok": True, "configs": configs}, ensure_ascii=False)
 
 
@@ -233,7 +232,7 @@ def read_database_config(db_alias: str) -> str:
                 "db_alias": alias,
                 "config": mask_config_secrets(data),
                 "path": str(config_path(alias)),
-                "note": "password/target_password 在工具返回中已脱敏为 ***；磁盘 config.json 仍为真实密码。",
+                "note": "password/target_password are redacted as *** in tool output; config.json on disk keeps real values.",
             },
             ensure_ascii=False,
         )

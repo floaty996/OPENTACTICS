@@ -1,3 +1,5 @@
+"""Custom skill I/O for config/custom_skills/."""
+
 from __future__ import annotations
 
 import json
@@ -19,17 +21,17 @@ create_custom_skill_schema = {
     "type": "function",
     "function": {
         "name": "create_custom_skill",
-        "description": "在 config/custom_skills/ 下新建用户自定义 Skill（含 SKILL.md）。",
+        "description": "Create a user custom Skill under config/custom_skills/ (includes SKILL.md).",
         "parameters": {
             "type": "object",
             "properties": {
-                "skill_id": {"type": "string", "description": "目录名，字母开头"},
-                "name": {"type": "string", "description": "显示名"},
-                "description": {"type": "string", "description": "简短描述"},
-                "instructions": {"type": "string", "description": "SKILL.md 正文（frontmatter 之后）"},
+                "skill_id": {"type": "string", "description": "Directory name; must start with a letter"},
+                "name": {"type": "string", "description": "Display name"},
+                "description": {"type": "string", "description": "Short description"},
+                "instructions": {"type": "string", "description": "SKILL.md body (after frontmatter)"},
                 "skill_md": {
                     "type": "string",
-                    "description": "完整 SKILL.md 内容（含 frontmatter）；提供时忽略 name/description/instructions",
+                    "description": "Full SKILL.md including frontmatter; ignores name/description/instructions when set",
                 },
             },
             "required": ["skill_id"],
@@ -41,12 +43,12 @@ write_custom_skill_file_schema = {
     "type": "function",
     "function": {
         "name": "write_custom_skill_file",
-        "description": "向已存在的自定义 Skill 写入或覆盖文件（如 references/xxx.md）。",
+        "description": "Write or overwrite a file in an existing custom Skill (e.g. references/xxx.md).",
         "parameters": {
             "type": "object",
             "properties": {
                 "skill_id": {"type": "string"},
-                "file_path": {"type": "string", "description": "相对 skill 目录的路径"},
+                "file_path": {"type": "string", "description": "Path relative to skill directory"},
                 "content": {"type": "string"},
             },
             "required": ["skill_id", "file_path", "content"],
@@ -58,7 +60,7 @@ list_custom_skills_schema = {
     "type": "function",
     "function": {
         "name": "list_custom_skills",
-        "description": "列出所有用户自定义 Skill id。",
+        "description": "List all user custom Skill ids.",
         "parameters": {"type": "object", "properties": {}},
     },
 }
@@ -67,7 +69,7 @@ delete_custom_skill_schema = {
     "type": "function",
     "function": {
         "name": "delete_custom_skill",
-        "description": "删除用户自定义 Skill（不可删除系统 skill）。",
+        "description": "Delete a user custom Skill (cannot delete system skills).",
         "parameters": {
             "type": "object",
             "properties": {"skill_id": {"type": "string"}},
@@ -80,11 +82,11 @@ list_uploads_schema = {
     "type": "function",
     "function": {
         "name": "list_skill_author_uploads",
-        "description": "列出当前 Skill 创建会话中用户上传的参考文件。",
+        "description": "List reference files uploaded in the current Skill authoring session.",
         "parameters": {
             "type": "object",
             "properties": {
-                "session_id": {"type": "string", "description": "Skill 创建会话 id"},
+                "session_id": {"type": "string", "description": "Skill authoring session id"},
             },
             "required": ["session_id"],
         },
@@ -95,7 +97,7 @@ read_upload_schema = {
     "type": "function",
     "function": {
         "name": "read_skill_author_upload",
-        "description": "读取当前会话中用户上传的参考文件内容（文本类）。",
+        "description": "Read text content of an upload in the current session.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -112,7 +114,7 @@ read_upload_schema = {
     "skill_author",
     name="create_custom_skill",
     schema=create_custom_skill_schema,
-    alias=["创建自定义skill", "新建skill"],
+    alias=["create_custom_skill_doc"],
 )
 def tool_create_custom_skill(
     skill_id: str,
@@ -138,7 +140,7 @@ def tool_create_custom_skill(
     "skill_author",
     name="write_custom_skill_file",
     schema=write_custom_skill_file_schema,
-    alias=["写入自定义skill文件"],
+    alias=["write_custom_skill_asset"],
 )
 def tool_write_custom_skill_file(skill_id: str, file_path: str, content: str) -> str:
     try:

@@ -112,12 +112,31 @@
         </fieldset>
 
         <fieldset class="fieldset span-2">
+          <legend data-i18n="setup.llm">AI / LLM</legend>
+          <label>
+            <span data-i18n="setup.llmProvider">Provider for chat</span>
+            <select name="llm_provider" id="llm-provider-select">
+              <option value="deepseek" data-i18n="setup.llmDeepseek">DeepSeek</option>
+              <option value="gemini" data-i18n="setup.llmGemini">Google Gemini</option>
+            </select>
+          </label>
+          <p class="hint small" data-i18n="setup.llmHint">Choose which API powers agent chat for this saas. Keys can be configured below; only the selected provider is required.</p>
+        </fieldset>
+
+        <fieldset class="fieldset span-2" id="deepseek-llm-fieldset">
           <legend data-i18n="setup.deepseek">DeepSeek API</legend>
           <label><span data-i18n="setup.apiKey">API Key</span> <input name="deepseek_api_key" type="password" autocomplete="off" data-i18n-placeholder="setup.apiKeyPlaceholder" placeholder="Leave blank if already configured" /></label>
           <div class="row-2">
             <label><span data-i18n="setup.baseUrl">Base URL</span> <input name="deepseek_base_url" value="https://api.deepseek.com" /></label>
             <label><span data-i18n="setup.model">Model</span> <input name="deepseek_model" value="deepseek-chat" /></label>
           </div>
+        </fieldset>
+
+        <fieldset class="fieldset span-2 hidden" id="gemini-llm-fieldset">
+          <legend data-i18n="setup.gemini">Google Gemini API</legend>
+          <label><span data-i18n="setup.geminiApiKey">API Key</span> <input name="gemini_api_key" type="password" autocomplete="off" data-i18n-placeholder="setup.geminiApiKeyPlaceholder" placeholder="Stored in this saas workspace" /></label>
+          <label><span data-i18n="setup.geminiModel">Model</span> <input name="gemini_model" value="gemini-2.0-flash" /></label>
+          <p class="hint small" data-i18n="setup.geminiHint">Uses Gemini OpenAI-compatible endpoint. Optional fallback: config/gemini.json (see gemini.example.json).</p>
         </fieldset>
 
         <div class="actions span-2">

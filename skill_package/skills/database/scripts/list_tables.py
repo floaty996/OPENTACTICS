@@ -5,13 +5,13 @@ list_tables_schema = {
     "type": "function",
     "function": {
         "name": "list_tables",
-        "description": "列举当前连接数据库中的表名。须先 database_connect。",
+        "description": "List table names in the connected database. Requires database_connect first.",
         "parameters": {
             "type": "object",
             "properties": {
                 "connection_id": {
                     "type": "string",
-                    "description": "database_connect 返回的连接 id",
+                    "description": "Connection id returned by database_connect",
                 },
             },
             "required": ["connection_id"],
@@ -24,7 +24,7 @@ list_tables_schema = {
     "database",
     name="list_tables",
     schema=list_tables_schema,
-    alias=["列举表", "所有表"],
+    alias=["list_all_tables"],
 )
 def list_tables(connection_id: str) -> str:
     return _list_tables(connection_id)

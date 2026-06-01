@@ -1,4 +1,4 @@
-"""database skill 产出目录 → workspace/{db_alias}/dataset/"""
+"""database skill output → workspace/{db_alias}/dataset/"""
 
 from skill_package.workspace.paths import (
     TEMPLATES_ROOT,
@@ -8,5 +8,5 @@ from skill_package.workspace.paths import (
     validate_db_alias,
 )
 
-# 模板（供 SKILL 引用）
+# Template referenced from SKILL.md
 DATASET_TEMPLATE = TEMPLATES_ROOT / "dataset_knowledge.md"

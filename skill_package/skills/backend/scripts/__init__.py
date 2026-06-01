@@ -1,1 +1,1 @@
-"""backend skill 工具脚本（import 时注册 @register_skill_tool）。"""
+"""backend skill tool scripts (register @register_skill_tool on import)."""

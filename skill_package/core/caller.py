@@ -1,4 +1,4 @@
-"""调用 Skill 的统一框架：加载 MD → 执行内嵌 Python → 拼回正文 → 交给智能体。"""
+"""Unified skill invocation: load MD → run embedded Python → merge body → hand off to agent."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ ToolRunner = Callable[[str, dict[str, Any]], str]
 
 @dataclass
 class SkillInvokeResult:
-    """一次 skill 调用的完整产物，供智能体消费。"""
+    """Full output of one skill invocation for the agent."""
 
     skill_id: str
     context: str
@@ -25,30 +25,30 @@ class SkillInvokeResult:
     block_outputs: list[str] = field(default_factory=list)
 
     def make_tool_runner(self) -> ToolRunner:
-        """根据本 skill 已注册工具生成默认 tool_runner。"""
+        """Build default tool_runner from tools registered for this skill."""
 
         def _run(name: str, arguments: dict[str, Any]) -> str:
             fn = get_tool_function(name)
             if fn is None:
                 import json
 
-                return json.dumps({"ok": False, "error": f"未知工具: {name}"}, ensure_ascii=False)
+                return json.dumps({"ok": False, "error": f"Unknown tool: {name}"}, ensure_ascii=False)
             return fn(**arguments)
 
         return _run
 
 
 class SkillCaller:
-    """Skill 调用框架。
+    """Skill invocation framework.
 
-    典型流程::
+    Typical flow::
 
         caller = SkillCaller()
         result = caller.invoke("database")
         agent.chat(result.context, user_question, tools=result.tools)
 
-    ``run-python`` 块执行后，输出会**替换**该块出现在 ``result.context`` 中；
-    原始 SKILL.md 文件不会被修改。
+    After ``run-python`` blocks run, their output **replaces** the fence in ``result.context``;
+    the on-disk SKILL.md file is unchanged.
     """
 
     def __init__(
@@ -65,10 +65,10 @@ class SkillCaller:
         self.fence_lang = fence_lang
 
     def invoke(self, skill_id: str) -> SkillInvokeResult:
-        """加载 skill、执行 MD 内 Python 块、组装完整上下文与工具 schema。"""
+        """Load skill, run MD Python blocks, assemble context and tool schemas."""
         if skill_id not in self.orchestrator.skills:
-            available = ", ".join(self.orchestrator.skills.keys()) or "（无）"
-            raise ValueError(f"skill 不存在: {skill_id!r}，当前可用: {available}")
+            available = ", ".join(self.orchestrator.skills.keys()) or "(none)"
+            raise ValueError(f"Unknown skill: {skill_id!r}; available: {available}")
 
         skill = self.orchestrator.skills[skill_id]
         self.orchestrator.ensure_tools_loaded(skill_id)
@@ -97,10 +97,10 @@ class SkillCaller:
         agent: Any | None = None,
         tool_runner: ToolRunner | None = None,
     ) -> str:
-        """invoke + 调用智能体，返回模型最终文本回复。
+        """invoke + call agent; return final model text.
 
-        ``agent`` 须实现 ``chat(context, user_message, tools=...)`` 且可迭代返回 str 片段；
-        未传入时从 ``agents.get_agent_backend`` 懒加载。
+        ``agent`` must implement ``chat(context, user_message, tools=...)`` yielding str chunks;
+        if omitted, loads from ``agents.get_agent_backend``.
         """
         result = self.invoke(skill_id)
         runner = tool_runner or result.make_tool_runner()

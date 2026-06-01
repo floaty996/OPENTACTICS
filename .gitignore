@@ -1,9 +1,50 @@
+# --- Local secrets & runtime config ---
 config/deepseek.json
+config/gemini.json
+config/database.json
 config/studio_state.json
+config/skill_author_uploads/
+
+# --- Workspace DB configs (per saas; use Studio or example files locally) ---
 skill_package/workspace/*/config.json
+
+# --- Per-saas generated output (keep workspace/*.py, README, _templates/) ---
+skill_package/workspace/*/
+!skill_package/workspace/_templates/
+
 skill_package/config/database/*.json
 !skill_package/config/database/*.example
 !skill_package/config/database/example.*
-config/database.json
+
+# --- Local data & databases ---
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Studio / backend runtime artifacts ---
+**/.studio_uvicorn.log
+**/.studio_pip_done
+
+# --- Python ---
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+skill_venv/
+.env
+.env.*
+
+# --- OS & editors ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# --- Archives (optional local skill bundles) ---
+*.zip

@@ -1,4 +1,4 @@
-"""将 pymysql / MySQL 连接异常转为用户可读的中文说明。"""
+"""Convert pymysql / MySQL connection errors into readable English messages."""
 
 from __future__ import annotations
 
@@ -31,53 +31,54 @@ def format_db_connection_error(
     role: str | None = None,
 ) -> str:
     """
-    将 (1049, "Unknown database 'xxx'") 等原始错误转为中文提示。
+    Turn errors like (1049, "Unknown database 'xxx'") into user-facing English.
 
-    role: 「源库」或「目标库」，用于保存配置时的连接测试。
+    role: "source" or "target" for connection tests when saving config.
     """
     errno, msg = _parse_mysql_errno_message(exc)
     db_name = _extract_db_name(msg, database)
 
     label = ""
     if role and db_name:
-        label = f"{role}「{db_name}」"
+        label = f'{role} database "{db_name}"'
     elif role:
-        label = role
+        label = f"{role} database"
     elif db_name:
-        label = f"数据库「{db_name}」"
+        label = f'database "{db_name}"'
 
     if errno == 1049 or "unknown database" in msg.lower():
-        name = db_name or "（未识别库名）"
-        who = label or f"数据库「{name}」"
-        hint = "源数据库" if role == "源库" else "目标数据库" if role == "目标库" else "数据库"
+        name = db_name or "(unknown name)"
+        who = label or f'database "{name}"'
+        hint = "source database" if role == "source" else "target database" if role == "target" else "database"
         return (
-            f"{who}在 MySQL 中不存在。"
-            f"请检查「{hint}」名称是否填错（当前为 {name}），"
-            f"或先在 MySQL 中手动创建该库（本系统不会自动建库）。"
+            f"{who} does not exist in MySQL. "
+            f"Check whether the {hint} name is wrong (current: {name}), "
+            f"or create the database manually in MySQL (this system does not auto-create databases)."
         )
 
     if errno == 1045 or "access denied" in msg.lower():
         return (
-            f"{label + ' ' if label else ''}MySQL 登录失败：用户名或密码不正确，"
-            f"请核对账号密码及该用户是否允许从当前主机连接。"
+            f"{' ' + label if label else ''}MySQL login failed: incorrect username or password, "
+            f"or the user is not allowed to connect from this host."
         ).strip()
 
     if errno == 1044:
-        name = db_name or _extract_db_name(msg, None) or "该库"
+        name = db_name or _extract_db_name(msg, None) or "that database"
+        role_hint = "source" if role == "source" else "target" if role == "target" else "database"
         return (
-            f"账号无权访问数据库「{name}」。"
-            f"请为 MySQL 用户授予该库的权限，或检查{('源库' if role == '源库' else '目标库') if role else '库名'}是否填错。"
+            f'Account has no permission for database "{name}". '
+            f"Grant privileges to the MySQL user, or verify the {role_hint} name."
         )
 
     if errno in (2002, 2003) or "can't connect" in msg.lower():
         return (
-            "无法连接到 MySQL 服务器。请检查主机地址、端口是否正确，"
-            "并确认 MySQL 服务已启动、防火墙未拦截。"
+            "Cannot connect to MySQL server. Check host and port, "
+            "ensure MySQL is running, and verify firewall rules."
         )
 
     if errno == 2013 or "timed out" in msg.lower() or "timeout" in msg.lower():
-        return "连接 MySQL 超时，请检查网络、主机地址与端口。"
+        return "MySQL connection timed out. Check network, host, and port."
 
     if label:
-        return f"{label} 连接失败：{msg}"
-    return f"数据库连接失败：{msg}"
+        return f"{label} connection failed: {msg}"
+    return f"Database connection failed: {msg}"

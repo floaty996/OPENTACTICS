@@ -1,4 +1,4 @@
-"""一键脚手架：按全栈规范生成可启动的 backend + frontend 骨架。"""
+"""One-shot scaffold: runnable backend + frontend skeleton per full-stack rules."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ DEFAULT_REQUIREMENTS = """fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
 """
 
-DATABASE_PY_STUB = '''"""数据库连接（优先读 Studio 注入的环境变量）。"""
+DATABASE_PY_STUB = '''"""Database access (prefer Studio-injected environment variables)."""
 from __future__ import annotations
 
 import os
@@ -59,7 +59,7 @@ def build_scaffold_plan(
     fe_name = frontend_project.strip().strip("/")
     be_name = (backend_project or f"{fe_name}-api").strip().strip("/")
     if not fe_name or not be_name:
-        raise ValueError("frontend_project / backend_project 非法")
+        raise ValueError("Invalid frontend_project or backend_project")
 
     main_py = _BACKEND_TEMPLATE.read_text(encoding="utf-8")
     main_py = main_py.replace('title="API"', f'title="{service_title}"')
@@ -89,8 +89,8 @@ def build_scaffold_plan(
     preview_html = _PREVIEW_TEMPLATE.read_text(encoding="utf-8") if _PREVIEW_TEMPLATE.is_file() else ""
     if not preview_html:
         preview_html = (
-            "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>预览</title></head>"
-            "<body><p id=\"apiStatus\">加载中</p><script>\n"
+            '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Preview</title></head>'
+            '<body><p id="apiStatus">Loading…</p><script>\n'
             + generate_preview_api_block()
             + "\ncheckBackendHealth();\n</script></body></html>"
         )
@@ -103,19 +103,19 @@ api_prefix: "/api"
 default_port: 8000
 ---
 
-# {service_title} — API 知识
+# {service_title} — API knowledge
 
-## REST 接口一览
+## REST endpoints
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /api/health | 健康检查 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /api/health | Health check |
 
-## 与前端对接
+## Frontend integration
 
-- 前端：`frontend/{fe_name}/`
-- API 基址：`http://127.0.0.1:8000/api`
-- preview 使用 `apiGet('/health')` 等（path 不含重复 /api）
+- Frontend: `frontend/{fe_name}/`
+- API base: `http://127.0.0.1:8000/api`
+- preview uses `apiGet('/health')` etc. (paths without duplicate /api prefix)
 """
 
     ui_knowledge = f"""---
@@ -124,12 +124,12 @@ project_name: "{fe_name}"
 linked_backend: "{be_name}"
 ---
 
-# {service_title} — UI 知识
+# {service_title} — UI knowledge
 
-## API 对接
+## API integration
 
-- 使用 preview.html 内 FULLSTACK_API 标准块的 `apiGet` / `apiPost`
-- 写业务请求前调用 `get_fullstack_api_contract` 查看 `route_fetch_map`
+- Use `apiGet` / `apiPost` from the FULLSTACK_API block in preview.html
+- Call `get_fullstack_api_contract` before business requests to read `route_fetch_map`
 """
 
     files: list[dict[str, str]] = [
@@ -151,17 +151,17 @@ linked_backend: "{be_name}"
         "backend_project": be_name,
         "files": files,
         "next_steps": [
-            f"用 save_backend_file 写入业务 routers（或 patch main.py include_router）",
+            "Use save_backend_file for business routers (or patch main.py include_router)",
             f"get_fullstack_api_contract(db_alias={alias!r}, frontend_project={fe_name!r})",
-            f"save_ui_file 更新 preview.html 业务页面",
-            "verify_fullstack_deliverables 通过后再对用户说系统完成",
+            "Use save_ui_file to extend preview.html business UI",
+            "Call verify_fullstack_deliverables before telling the user the system is complete",
         ],
         "spec": "skill_package/core/fullstack_enforce.py GENERATION_SPEC",
     }
 
 
 def write_scaffold_to_workspace(plan: dict[str, Any]) -> dict[str, Any]:
-    """将 scaffold 计划落盘（供 scaffold_fullstack_project 工具调用）。"""
+    """Write scaffold plan to disk (scaffold_fullstack_project tool)."""
     alias = validate_db_alias(plan["db_alias"])
     written: list[str] = []
     for item in plan.get("files") or []:

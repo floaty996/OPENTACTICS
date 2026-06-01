@@ -150,10 +150,26 @@ function getActiveSkillsForChat() {
   return skillsCache.filter((s) => s.studio_visible !== false).map((s) => s.id).filter(Boolean);
 }
 let editingDbAlias = null;
+let editingProjectHasGemini = false;
 /** @type {Array<Record<string, unknown>>} */
 let projectsCache = [];
 /** @type {Record<string, unknown> | null} */
 let lastMainStatus = null;
+
+function syncLlmProviderPanels() {
+  const form = $("#setup-form");
+  const provider = form?.llm_provider?.value || "deepseek";
+  $("#deepseek-llm-fieldset")?.classList.toggle("hidden", provider !== "deepseek");
+  $("#gemini-llm-fieldset")?.classList.toggle("hidden", provider !== "gemini");
+}
+
+function formatLlmStatusParams(status) {
+  const provider = status?.llm_provider || "deepseek";
+  const providerLabel =
+    provider === "gemini" ? t("main.llmProviderGemini") : t("main.llmProviderDeepseek");
+  const llm = status?.llm_ready ? t("main.llmOk") : t("main.llmMissing");
+  return { llm, provider: providerLabel };
+}
 
 function formatApiError(detail) {
   if (detail == null || detail === "") return "";
@@ -3368,7 +3384,12 @@ async function showMain(status, { skipChatReload = false } = {}) {
   lastMainStatus = status;
   const sources = (status.source_databases || []).join(", ") || t("common.none");
   const storageHtml = formatStorageSummary(status);
-  $("#status-bar-text").innerHTML = t("main.statusBar", { alias: status.db_alias, sources, storage: storageHtml, deepseek: status.has_deepseek ? t("main.deepseekOk") : t("main.deepseekMissing") });
+  $("#status-bar-text").innerHTML = t("main.statusBar", {
+    alias: status.db_alias,
+    sources,
+    storage: storageHtml,
+    ...formatLlmStatusParams(status),
+  });
   if (chatState.dbAlias !== status.db_alias) {
     await initChatForProject(status.db_alias, status);
   } else if (!skipChatReload) {
@@ -3508,6 +3529,7 @@ function showSetupForm(project = null) {
   $("#setup-panel").classList.remove("hidden");
   $("#setup-error").classList.add("hidden");
   editingDbAlias = project ? project.db_alias : null;
+  editingProjectHasGemini = Boolean(project?.has_gemini_api_key);
 
   const form = $("#setup-form");
   if (project) {
@@ -3528,6 +3550,14 @@ function showSetupForm(project = null) {
     initSourceDbList(project.source_databases || []);
     initSourceFileList(project.source_files || []);
     form.password.required = setupNeedsMysql(form) && !project.has_password;
+    if (form.llm_provider) form.llm_provider.value = project.llm_provider || "deepseek";
+    if (form.gemini_model) form.gemini_model.value = project.gemini_model || "gemini-2.0-flash";
+    if (form.gemini_api_key) {
+      form.gemini_api_key.value = "";
+      form.gemini_api_key.placeholder = project.has_gemini_api_key
+        ? t("setup.geminiApiKeyPlaceholder")
+        : t("setup.geminiApiKeyPlaceholder");
+    }
   } else {
     $("#setup-title").textContent = t("setup.newTitle");
     $("#setup-hint").innerHTML = t("setup.hintNewHtml");
@@ -3540,7 +3570,11 @@ function showSetupForm(project = null) {
     form.password.placeholder = t("setup.passwordPlaceholder");
     initSourceDbList();
     initSourceFileList();
+    if (form.llm_provider) form.llm_provider.value = "deepseek";
+    if (form.gemini_model) form.gemini_model.value = "gemini-2.0-flash";
   }
+
+  syncLlmProviderPanels();
 
   $("#back-to-projects-btn").classList.toggle(
     "hidden",
@@ -3583,6 +3617,8 @@ async function init() {
   }
 }
 
+$("#llm-provider-select")?.addEventListener("change", syncLlmProviderPanels);
+
 $("#setup-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const errEl = $("#setup-error");
@@ -3614,9 +3650,19 @@ $("#setup-form").addEventListener("submit", async (e) => {
     return;
   }
 
+  const provider = (fd.get("llm_provider") || "deepseek").trim();
   const deepseekKey = (fd.get("deepseek_api_key") || "").trim();
+  const geminiKey = (fd.get("gemini_api_key") || "").trim();
   const status = await fetchStatus();
-  if (!status.has_deepseek && !deepseekKey) {
+  if (provider === "gemini") {
+    if (!geminiKey && !editingProjectHasGemini) {
+      errEl.textContent = t("setup.geminiApiKeyRequired");
+      errEl.classList.remove("hidden");
+      btn.disabled = false;
+      btn.textContent = btnLabel;
+      return;
+    }
+  } else if (!status.has_deepseek && !deepseekKey) {
     errEl.textContent = t("setup.apiKeyRequired");
     errEl.classList.remove("hidden");
     btn.disabled = false;
@@ -3637,6 +3683,9 @@ $("#setup-form").addEventListener("submit", async (e) => {
     deepseek_api_key: deepseekKey || null,
     deepseek_base_url: fd.get("deepseek_base_url") || "https://api.deepseek.com",
     deepseek_model: fd.get("deepseek_model") || "deepseek-chat",
+    llm_provider: provider,
+    gemini_api_key: geminiKey || null,
+    gemini_model: (fd.get("gemini_model") || "gemini-2.0-flash").trim(),
     test_connection: fd.get("test_connection") === "on",
   };
 
@@ -4065,7 +4114,7 @@ async function refreshUiLanguage() {
       alias: status.db_alias,
       sources,
       storage: storageHtml,
-      deepseek: status.has_deepseek ? t("main.deepseekOk") : t("main.deepseekMissing"),
+      ...formatLlmStatusParams(status),
     });
     await renderConversationHistory();
   }

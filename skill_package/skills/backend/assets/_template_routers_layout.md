@@ -1,8 +1,8 @@
-# 多文件后端工程模板（Studio 兼容）
+# Multi-file backend layout (Studio compatible)
 
-Skill Studio 以 `uvicorn main:app` 在 `backend/{project}/` 目录启动，**禁止**任何 `.py` 使用相对导入。
+Skill Studio starts with `uvicorn main:app` in `backend/{project}/`. **No relative imports** in any `.py`.
 
-## 目录结构
+## Directory layout
 
 ```
 backend/{project}/
@@ -11,20 +11,19 @@ backend/{project}/
 ├── requirements.txt
 ├── api_manifest.json
 └── routers/
-    ├── __init__.py      # 可为空文件，但建议创建
-    ├── stations.py
-    └── employees.py
+    ├── __init__.py      # may be empty but should exist
+    ├── employees.py
+    └── stations.py
 ```
 
-## main.py（正确）
+## main.py (correct)
 
 ```python
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from routers import employees, stations  # absolute import; not from .routers
 
-from routers import employees, stations  # 绝对导入，勿写 from .routers
-
-app = FastAPI(title="API")
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:8765", "http://localhost:8765"],
@@ -32,32 +31,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(stations.router)
 app.include_router(employees.router)
-
-@app.get("/api/health")
-def health():
-    return {"ok": True}
+app.include_router(stations.router)
 ```
 
-## routers/stations.py（正确）
+## routers/stations.py (correct)
 
 ```python
 from fastapi import APIRouter
-
-from database import get_connection  # 绝对导入，勿写 from ..database
+from database import get_connection  # absolute import; not from ..database
 
 router = APIRouter(prefix="/api/stations", tags=["stations"])
 ```
 
-## 错误示例（会导致 Studio 首次启动失败）
+## Wrong (Studio first start will fail)
 
 ```python
-# main.py — 错误
-from .routers import stations
+# main.py — wrong
+from .routers import stations, employees
 
-# routers/stations.py — 错误
+# routers/stations.py — wrong
 from ..database import get_connection
 ```
 
-日志典型报错：`ImportError: attempted relative import with no known parent package`
+Typical log: `ImportError: attempted relative import with no known parent package`

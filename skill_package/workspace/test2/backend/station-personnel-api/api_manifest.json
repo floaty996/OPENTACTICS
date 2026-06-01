@@ -1,8 +1,0 @@
-{
-  "has_database_connection": true,
-  "linked_frontend": "station-personnel",
-  "default_port": 8000,
-  "api_prefix": "/api",
-  "stack": "fastapi",
-  "description": "站点人员信息系统"
-}

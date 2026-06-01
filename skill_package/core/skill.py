@@ -5,12 +5,12 @@ from pathlib import Path
 
 try:
     import yaml
-except ImportError:  # pragma: no cover - 執行環境若無 PyYAML 則用簡易解析
+except ImportError:  # pragma: no cover - fallback when PyYAML is unavailable
     yaml = None  # type: ignore
 
 
 def _parse_simple_frontmatter(block: str) -> dict:
-    """仅支持`key: value`格式，作为无PyYAML时的备用方案"""
+    """Simple ``key: value`` frontmatter parser when PyYAML is unavailable."""
     out: dict = {}
     for line in block.splitlines():
         line = line.strip()
@@ -27,7 +27,7 @@ def _parse_simple_frontmatter(block: str) -> dict:
 
 
 class Skill:
-    """单一技能：对应目录中的SKILL.md文件以及可选的tools/目录"""
+    """One skill: SKILL.md in its directory plus optional tools/ package."""
 
     def __init__(self, skill_id: str, path: str | Path, *, origin: str = "system"):
         self.skill_id = skill_id
@@ -41,7 +41,7 @@ class Skill:
     def _load(self) -> None:
         if not self.skill_file.exists():
             self.metadata = {"name": self.skill_id}
-            self.instructions = "（尚未提供 SKILL.md）"
+            self.instructions = "(No SKILL.md provided yet)"
             return
         try:
             content = self.skill_file.read_text(encoding="utf-8")
@@ -60,7 +60,7 @@ class Skill:
             self.instructions = content.strip()
         except Exception:
             self.metadata = {"name": self.skill_id}
-            self.instructions = "SKILL.md 获取失敗。"
+            self.instructions = "Failed to load SKILL.md."
 
     @property
     def name(self) -> str:
@@ -98,9 +98,9 @@ class Skill:
         execute_skill_blocks: bool = False,
         exec_timeout: float = 30.0,
     ) -> tuple[str, list[str]]:
-        """处理 SKILL 正文：执行 ``run-python`` 块，用输出替换原围栏（仅内存，不写回文件）。
+        """Process SKILL body: run ``run-python`` blocks and replace fences with output (memory only).
 
-        返回 ``(处理后的正文, 各块输出列表)``。
+        Returns ``(processed body, per-block output list)``.
         """
         if not execute_skill_blocks:
             return self.instructions, []
@@ -118,12 +118,12 @@ class Skill:
         execute_skill_blocks: bool = False,
         exec_timeout: float = 30.0,
     ) -> tuple[str, list[str], str]:
-        """组装给模型看的 skill 上下文。
+        """Assemble skill context for the model.
 
-        若 ``execute_skill_blocks=True``，会先执行正文中 ``run-python`` 围栏块，
-        用纯文本输出替换各块（磁盘上的 SKILL.md 不变），再与附加 MD、目录结构一并返回。
+        When ``execute_skill_blocks=True``, runs ``run-python`` fences first and replaces
+        them with plain output (on-disk SKILL.md unchanged), then adds extra MD and layout.
 
-        返回 ``(完整上下文, 各块输出列表, 处理后的 SKILL 正文)``。
+        Returns ``(full context, block outputs, processed SKILL body)``.
         """
         instructions_body, block_outputs = self.prepare_instructions(
             execute_skill_blocks=execute_skill_blocks,

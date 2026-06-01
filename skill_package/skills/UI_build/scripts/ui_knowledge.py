@@ -1,12 +1,12 @@
-"""UI 前端知识文档：workspace/{db_alias}/frontend/{project_name}/ui_knowledge.md"""
+"""UI frontend knowledge: workspace/{db_alias}/frontend/{project_name}/ui_knowledge.md"""
 
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 from skill_package.core.registry import register_skill_tool
+from skill_package.skills.UI_build.paths import UI_KNOWLEDGE_NAME
 from skill_package.skills.UI_build.scripts.ui_assets import (
     _project_root,
     _read_manifest_file,
@@ -14,15 +14,13 @@ from skill_package.skills.UI_build.scripts.ui_assets import (
 )
 from skill_package.workspace.paths import ensure_workspace, validate_db_alias
 
-UI_KNOWLEDGE_NAME = "ui_knowledge.md"
-
 read_schema = {
     "type": "function",
     "function": {
         "name": "read_ui_knowledge",
         "description": (
-            "读取 workspace/{db_alias}/frontend/{project_name}/ui_knowledge.md，"
-            "含样式、排版、组件与交互等前端知识。"
+            "Read workspace/{db_alias}/frontend/{project_name}/ui_knowledge.md "
+            "(layout, styling, components, interaction)."
         ),
         "parameters": {
             "type": "object",
@@ -40,15 +38,15 @@ save_schema = {
     "function": {
         "name": "save_ui_knowledge",
         "description": (
-            "保存或更新 ui_knowledge.md（Markdown，建议含 YAML frontmatter）。"
-            "在生成/迭代前端后，根据对话与实现整理样式、排版、组件约定等。"
+            "Save or update ui_knowledge.md (Markdown, YAML frontmatter recommended). "
+            "After frontend work, document layout, styling, and component conventions."
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "db_alias": {"type": "string"},
                 "project_name": {"type": "string"},
-                "content": {"type": "string", "description": "完整 Markdown 内容"},
+                "content": {"type": "string", "description": "Full Markdown content"},
             },
             "required": ["db_alias", "project_name", "content"],
         },
@@ -69,8 +67,8 @@ def read_ui_knowledge(db_alias: str, project_name: str) -> str:
             return json.dumps(
                 {
                     "ok": False,
-                    "error": f"ui_knowledge.md 不存在: frontend/{project_name}/",
-                    "hint": "生成前端后请用 save_ui_knowledge 创建并维护 UI 知识文档。",
+                    "error": f"ui_knowledge.md not found: frontend/{project_name}/",
+                    "hint": "After generating the frontend, use save_ui_knowledge to create and maintain the UI doc.",
                 },
                 ensure_ascii=False,
             )
@@ -101,7 +99,7 @@ def save_ui_knowledge(db_alias: str, project_name: str, content: str) -> str:
             return json.dumps(
                 {
                     "ok": False,
-                    "error": f"前端工程不存在: frontend/{project_name}/，请先 save_ui_file 创建工程。",
+                    "error": f"Frontend project not found: frontend/{project_name}/. Use save_ui_file first.",
                 },
                 ensure_ascii=False,
             )

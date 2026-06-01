@@ -1,4 +1,4 @@
-"""查阅 workspace/{db_alias}/dataset/ 下知识文档。"""
+"""Browse knowledge documents under workspace/{db_alias}/dataset/."""
 
 from __future__ import annotations
 
@@ -17,15 +17,15 @@ list_schema = {
     "function": {
         "name": "list_database_knowledge",
         "description": (
-            "列举 workspace/{db_alias}/dataset/ 下的 Markdown 知识文档。"
-            "db_alias 为空则列举所有工作区下的 dataset 文档。"
+            "List Markdown knowledge docs under workspace/{db_alias}/dataset/. "
+            "If db_alias is omitted, list docs across all workspaces."
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "db_alias": {
                     "type": "string",
-                    "description": "客户库别名；省略则扫描全部工作区",
+                    "description": "Customer workspace alias; omit to scan all workspaces",
                 },
             },
             "required": [],
@@ -37,14 +37,14 @@ read_schema = {
     "type": "function",
     "function": {
         "name": "read_database_knowledge",
-        "description": "读取 workspace/{db_alias}/dataset/ 下指定 .md 文件",
+        "description": "Read a .md file under workspace/{db_alias}/dataset/",
         "parameters": {
             "type": "object",
             "properties": {
-                "db_alias": {"type": "string", "description": "客户库别名"},
+                "db_alias": {"type": "string", "description": "Customer workspace alias"},
                 "file_name": {
                     "type": "string",
-                    "description": "相对 dataset/ 的路径，如 20260521_order_domain.md",
+                    "description": "Path relative to dataset/, e.g. 20260521_order_domain.md",
                 },
             },
             "required": ["db_alias", "file_name"],
@@ -60,14 +60,14 @@ def _resolve_md(db_alias: str, file_name: str) -> Path:
         name += ".md"
     rel = Path(name)
     if rel.is_absolute() or ".." in rel.parts:
-        raise ValueError("file_name 非法")
+        raise ValueError("Invalid file_name")
     if rel.parts and rel.parts[0] == "dataset":
         rel = Path(*rel.parts[1:])
     root = dataset_dir(alias).resolve()
     target = (root / rel).resolve()
     target.relative_to(root)
     if target.suffix.lower() != ".md":
-        raise ValueError("仅允许读取 .md 文件。")
+        raise ValueError("Only .md files are allowed.")
     return target
 
 
@@ -75,7 +75,7 @@ def _resolve_md(db_alias: str, file_name: str) -> Path:
     "database",
     name="list_database_knowledge",
     schema=list_schema,
-    alias=["列举知识文档", "查看已有文档"],
+    alias=["list_knowledge_docs"],
 )
 def list_database_knowledge(db_alias: str | None = None) -> str:
     aliases = [validate_db_alias(db_alias)] if db_alias and db_alias.strip() else list_workspace_aliases()
@@ -101,13 +101,13 @@ def list_database_knowledge(db_alias: str | None = None) -> str:
     "database",
     name="read_database_knowledge",
     schema=read_schema,
-    alias=["读取知识文档"],
+    alias=["read_knowledge_doc"],
 )
 def read_database_knowledge(db_alias: str, file_name: str) -> str:
     try:
         path = _resolve_md(db_alias, file_name)
         if not path.exists():
-            return json.dumps({"ok": False, "error": f"文件不存在: {path}"}, ensure_ascii=False)
+            return json.dumps({"ok": False, "error": f"File not found: {path}"}, ensure_ascii=False)
         content = path.read_text(encoding="utf-8")
         if len(content) > 50000:
             content = content[:50000] + "\n\n...[TRUNCATED]"

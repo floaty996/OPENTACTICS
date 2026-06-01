@@ -17,7 +17,7 @@ class SkillTool:
 
 
 def register_skill_tool(skill_id: str, name: str, schema: dict[str, Any], alias: list[str] | None = None):
-    """將函式註冊為某個 skill 專屬工具（skill_id 為 skills/ 下目錄名）。"""
+    """Register a function as a skill-specific tool (skill_id is the directory under skills/)."""
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         SKILL_TOOL_REGISTRY[name] = SkillTool(
@@ -40,12 +40,12 @@ def get_tool_function(name: str) -> Callable[..., Any] | None:
 
 
 def get_tool_schemas_for_skill(skill_id: str) -> list[dict[str, Any]]:
-    """回傳該 skill 註冊之工具的 OpenAI function schema 列表。"""
+    """OpenAI function schemas registered for one skill."""
     return [t.schema for t in SKILL_TOOL_REGISTRY.values() if t.skill_id == skill_id]
 
 
 def get_tool_schemas_for_skills(skill_ids: Iterable[str]) -> list[dict[str, Any]]:
-    """多個 skill 合併取得工具 schema（智能體啟用多個 skill 時用）。"""
+    """Merged tool schemas when multiple skills are enabled for one agent."""
     allow = frozenset(skill_ids)
     return [t.schema for t in SKILL_TOOL_REGISTRY.values() if t.skill_id in allow]
 
@@ -57,7 +57,7 @@ def _short_tool_description(desc: str, *, max_len: int = 52) -> str:
     text = " ".join(str(desc or "").split())
     if not text:
         return ""
-    for sep in ("。", "；", ";", ".", "，", ",", "\n"):
+    for sep in (".", ";", ",", "\n"):
         if sep in text:
             text = text.split(sep, 1)[0].strip()
             break
@@ -67,7 +67,7 @@ def _short_tool_description(desc: str, *, max_len: int = 52) -> str:
 
 
 def get_tool_display_labels() -> dict[str, str]:
-    """工具名 / 别名 -> 中文简短说明（供 Studio 展示）。"""
+    """Map tool name / alias -> short label for Studio UI."""
     global _TOOL_LABEL_CACHE
     if _TOOL_LABEL_CACHE is not None:
         return dict(_TOOL_LABEL_CACHE)
@@ -87,8 +87,8 @@ def get_tool_display_labels() -> dict[str, str]:
 
 
 def get_tool_display_label(name: str) -> str:
-    """返回工具的中文展示名；未知工具则返回原名。"""
+    """Short display label for a tool; unknown names pass through."""
     key = str(name or "").strip()
     if not key:
-        return "工具调用"
+        return "Tool call"
     return get_tool_display_labels().get(key, key)

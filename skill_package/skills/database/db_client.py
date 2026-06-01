@@ -1,4 +1,4 @@
-"""多类型数据库连接与会话管理；区分源库（只读）与目标库（可写）。"""
+"""Multi-database connections and sessions; separate source (read-only) and target (writable)."""
 
 from __future__ import annotations
 
@@ -55,23 +55,23 @@ def _err(message: str) -> str:
 def validate_sql_for_session(sql: str, connection_mode: str) -> None:
     stripped = sql.strip()
     if not stripped:
-        raise ValueError("SQL 不能为空。")
+        raise ValueError("SQL cannot be empty.")
     if _FORBIDDEN_RE.search(stripped) or _USE_DB_RE.match(stripped):
-        raise ValueError("不允许 GRANT/REVOKE/USE 等跨库或高危语句。")
+        raise ValueError("GRANT/REVOKE/USE and other high-risk cross-database statements are not allowed.")
 
     if connection_mode == "source":
         if not _READ_ONLY_RE.match(stripped):
-            raise ValueError("源库连接仅允许只读 SQL（SELECT/SHOW/DESCRIBE/EXPLAIN/PRAGMA）。")
+            raise ValueError("Source connections allow read-only SQL only (SELECT/SHOW/DESCRIBE/EXPLAIN/PRAGMA).")
         if re.search(
             r"\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|REPLACE)\b",
             stripped,
             re.IGNORECASE,
         ):
-            raise ValueError("源库禁止增删改或 DDL，请改用目标库连接（connection_mode=target）。")
+            raise ValueError("Source DB forbids writes/DDL; use target connection (connection_mode=target).")
     else:
         if not _TARGET_ALLOWED_RE.match(stripped):
             raise ValueError(
-                "目标库仅允许 SELECT/SHOW/DESCRIBE/INSERT/UPDATE/DELETE/CREATE/ALTER/DROP/TRUNCATE。"
+                "Target DB allows SELECT/SHOW/DESCRIBE/INSERT/UPDATE/DELETE/CREATE/ALTER/DROP/TRUNCATE only."
             )
 
 
@@ -98,7 +98,7 @@ def _resolve_credentials(
         cfg = load_workspace_db_config(db_alias)
         storage_mode = cfg.get("storage_mode") or "mysql"
         kind = cfg.get("db_type", db_type).strip().lower()
-        # config 里 db_type 可能与 storage_mode 不一致（如 test2 误写 sqlite）；以 storage_mode 为准
+        # db_type in config may disagree with storage_mode (e.g. mis-set sqlite); trust storage_mode
         if storage_mode == "mysql":
             if mode == "target" and cfg.get("target_database"):
                 kind = "mysql"
@@ -119,16 +119,17 @@ def _resolve_credentials(
             return kind, host, port, user or "", password or "", db_name, file_path
         if not cfg.get("source_databases"):
             raise ValueError(
-                "当前 saas 未配置源数据库；请填写 source_databases 或使用 connection_mode=target 连接本地库。"
+                "No source databases configured for this workspace; "
+                "set source_databases or use connection_mode=target for the local DB."
             )
         if not database or not str(database).strip():
             raise ValueError(
-                "连接源库时须指定 database，且必须在 config.json 的 source_databases 列表中。"
+                "When connecting to a source DB, database is required and must be in source_databases."
             )
         db_name = str(database).strip()
         if db_name not in cfg["source_databases"]:
             raise ValueError(
-                f"database={db_name!r} 不在 source_databases 中: {cfg['source_databases']}"
+                f"database={db_name!r} is not in source_databases: {cfg['source_databases']}"
             )
         user = cfg.get("user")
         password = cfg.get("password")
@@ -138,7 +139,7 @@ def _resolve_credentials(
         return kind, host, port, user or "", password or "", db_name, file_path
 
     if not database or not str(database).strip():
-        raise ValueError("须提供 database 或设置 use_workspace_config=true。")
+        raise ValueError("Provide database or set use_workspace_config=true.")
     return (
         db_type.strip().lower(),
         host,
@@ -165,7 +166,7 @@ def connect(
 ) -> str:
     alias = (db_alias or "").strip()
     if not alias:
-        return _err("db_alias 不能为空。")
+        return _err("db_alias cannot be empty.")
 
     mode = connection_mode if connection_mode in _CONNECTION_MODES else "source"
 
@@ -186,12 +187,12 @@ def connect(
         return _err(str(e))
 
     if kind not in _SUPPORTED:
-        return _err(f"不支持的 db_type: {db_type!r}")
+        return _err(f"Unsupported db_type: {db_type!r}")
 
     try:
         if kind == "sqlite":
             if not file_path or not str(file_path).strip():
-                return _err("sqlite 须提供 file_path。")
+                return _err("sqlite requires file_path.")
             path = str(file_path).strip()
             conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True) if mode == "source" else sqlite3.connect(path)
             db_name = path
@@ -199,7 +200,7 @@ def connect(
             import pymysql
 
             if not all([host, user, db_name]):
-                return _err("mysql 须提供 host、user、database。")
+                return _err("mysql requires host, user, and database.")
             conn = pymysql.connect(
                 host=host,
                 port=int(port or 3306),
@@ -215,10 +216,10 @@ def connect(
             try:
                 import psycopg2
             except ImportError:
-                return _err("postgresql 需要 psycopg2-binary")
+                return _err("postgresql requires psycopg2-binary")
 
             if not all([host, user, db_name]):
-                return _err("postgresql 须提供 host、user、database。")
+                return _err("postgresql requires host, user, and database.")
             conn = psycopg2.connect(
                 host=host,
                 port=int(port or 5432),
@@ -247,14 +248,14 @@ def connect(
                 "database": db_name,
                 "connection_mode": mode,
                 "message": (
-                    "源库连接成功（只读）。"
+                    "Source DB connected (read-only)."
                     if mode == "source"
-                    else "目标库连接成功（可建表/写入，仅限该库）。"
+                    else "Target DB connected (writable; this database only)."
                 ),
             }
         )
     except Exception as e:
-        role = "源库" if mode == "source" else "目标库"
+        role = "source" if mode == "source" else "target"
         return _err(
             format_db_connection_error(e, database=str(db_name) if db_name else None, role=role)
         )
@@ -263,18 +264,18 @@ def connect(
 def disconnect(connection_id: str) -> str:
     sess = _sessions.pop(connection_id, None)
     if not sess:
-        return _err(f"无效的 connection_id: {connection_id}")
+        return _err(f"Invalid connection_id: {connection_id}")
     try:
         sess.conn.close()
     except Exception:
         pass
-    return _ok({"ok": True, "connection_id": connection_id, "message": "已断开连接。"})
+    return _ok({"ok": True, "connection_id": connection_id, "message": "Disconnected."})
 
 
 def _get_session(connection_id: str) -> DbSession:
     sess = _sessions.get(connection_id)
     if not sess:
-        raise ValueError(f"无效的 connection_id: {connection_id}，请先 database_connect。")
+        raise ValueError(f"Invalid connection_id: {connection_id}. Call database_connect first.")
     return sess
 
 
@@ -328,12 +329,12 @@ def execute_query(connection_id: str, sql: str) -> str:
             }
         )
     except Exception as e:
-        return _err(f"执行失败: {e}")
+        return _err(f"Query failed: {e}")
 
 
 def _quote_mysql_table(name: str) -> str:
     if not re.match(r"^[A-Za-z0-9_]+$", name):
-        raise ValueError("表名仅允许字母、数字与下划线。")
+        raise ValueError("Table name may contain letters, digits, and underscores only.")
     return f"`{name}`"
 
 
@@ -341,11 +342,11 @@ def describe_table(connection_id: str, table_name: str) -> str:
     sess = _get_session(connection_id)
     t = table_name.strip()
     if not t:
-        return _err("table_name 不能为空。")
+        return _err("table_name cannot be empty.")
     try:
         if sess.db_type == "sqlite":
             if not re.match(r"^[A-Za-z0-9_]+$", t):
-                return _err("表名仅允许字母、数字与下划线。")
+                return _err("Table name may contain letters, digits, and underscores only.")
             cur = sess.conn.cursor()
             cur.execute("PRAGMA table_info(?)", (t,))
             rows = cur.fetchall()
@@ -380,7 +381,7 @@ def describe_table(connection_id: str, table_name: str) -> str:
             }
         )
     except Exception as e:
-        return _err(f"获取表结构失败: {e}")
+        return _err(f"Failed to describe table: {e}")
 
 
 def list_tables(connection_id: str) -> str:
@@ -420,4 +421,4 @@ def list_tables(connection_id: str) -> str:
             }
         )
     except Exception as e:
-        return _err(f"列举表失败: {e}")
+        return _err(f"Failed to list tables: {e}")

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from agents.deepseek_backend import DEFAULT_CONFIG_PATH, load_deepseek_config
+from agents.llm_config import normalize_llm_provider, workspace_llm_status
 from skill_package import SkillCaller, get_tool_function
 from skill_package.core.registry import get_tool_display_labels, get_tool_schemas_for_skills
 from skill_package.skills.database.mysql_errors import format_db_connection_error
@@ -165,6 +166,9 @@ def save_workspace_config(
     target_database: str,
     target_user: str | None = None,
     target_password: str | None = None,
+    llm_provider: str = "deepseek",
+    gemini_api_key: str | None = None,
+    gemini_model: str | None = None,
 ) -> dict[str, Any]:
     """写入 workspace config.json（支持无目标库 → 本地 SQLite）。"""
     alias = validate_db_alias(db_alias)
@@ -200,7 +204,13 @@ def save_workspace_config(
         "target_user": (target_user or user).strip(),
         "target_password": target_password if target_password is not None else password,
         "file_path": local_rel if storage_mode == "local" else None,
+        "llm_provider": normalize_llm_provider(llm_provider),
+        "gemini_model": (gemini_model or "").strip() or "gemini-2.0-flash",
     }
+    if gemini_api_key is not None and str(gemini_api_key).strip():
+        payload["gemini_api_key"] = str(gemini_api_key).strip()
+    elif existing and existing.get("gemini_api_key"):
+        payload["gemini_api_key"] = existing.get("gemini_api_key")
     payload = merge_preserved_secrets(payload, existing)
     if existing and existing.get("source_files"):
         from skill_package.workspace.source_files_store import normalize_source_files
@@ -515,6 +525,10 @@ def project_setup_form_from_config(alias: str, raw: dict[str, Any]) -> dict[str,
         "has_password": bool(raw.get("password")),
         "has_target_password": bool(raw.get("target_password")),
         "source_files": raw.get("source_files") or [],
+        "llm_provider": normalize_llm_provider(raw.get("llm_provider")),
+        "gemini_model": raw.get("gemini_model") or "gemini-2.0-flash",
+        "has_gemini_api_key": bool(str(raw.get("gemini_api_key") or "").strip())
+        and not is_redacted_secret(raw.get("gemini_api_key")),
     }
 
 
@@ -1052,8 +1066,12 @@ def list_tool_labels() -> dict[str, str]:
 def get_status() -> dict[str, Any]:
     state = load_studio_state()
     db_alias = state.get("db_alias", "")
+    llm_provider = "deepseek"
     has_deepseek = False
+    has_gemini = False
+    llm_ready = False
     deepseek_error = ""
+    gemini_model = "gemini-2.0-flash"
     try:
         load_deepseek_config()
         has_deepseek = True
@@ -1074,10 +1092,18 @@ def get_status() -> dict[str, Any]:
             storage_mode = cfg.get("storage_mode", "")
             source_files = cfg.get("source_files", [])
             config_ok = True
+            llm = workspace_llm_status(db_alias, cfg)
+            llm_provider = llm["llm_provider"]
+            has_gemini = llm["has_gemini"]
+            llm_ready = llm["llm_ready"]
+            gemini_model = llm["gemini_model"]
         except Exception:
             pass
 
-    ready = has_deepseek and has_db and bool(db_alias) and config_ok
+    if has_db and config_ok and not llm_ready and llm_provider == "deepseek":
+        llm_ready = has_deepseek
+
+    ready = llm_ready and has_db and bool(db_alias) and config_ok
 
     return {
         "ready": ready,
@@ -1087,7 +1113,11 @@ def get_status() -> dict[str, Any]:
         "source_files": source_files,
         "target_database": target_database,
         "storage_mode": storage_mode,
+        "llm_provider": llm_provider,
         "has_deepseek": has_deepseek,
+        "has_gemini": has_gemini,
+        "llm_ready": llm_ready,
+        "gemini_model": gemini_model,
         "has_db_config": has_db,
         "deepseek_config_path": str(DEFAULT_CONFIG_PATH),
         "workspace_config_path": str(config_path(db_alias)) if db_alias else "",
@@ -1111,6 +1141,9 @@ def complete_setup(
     target_password: str | None = None,
     deepseek_base_url: str = "https://api.deepseek.com",
     deepseek_model: str = "deepseek-chat",
+    llm_provider: str = "deepseek",
+    gemini_api_key: str | None = None,
+    gemini_model: str = "gemini-2.0-flash",
     test_connection: bool = True,
 ) -> dict[str, Any]:
     alias = validate_db_alias(db_alias)
@@ -1144,14 +1177,32 @@ def complete_setup(
     except Exception:
         pass
 
+    provider = normalize_llm_provider(
+        llm_provider or (existing or {}).get("llm_provider") or "deepseek"
+    )
+    gemini_key_new = (gemini_api_key or "").strip()
+    has_gemini_ws = bool(str((existing or {}).get("gemini_api_key") or "").strip()) and not is_redacted_secret(
+        (existing or {}).get("gemini_api_key")
+    )
+
     if deepseek_api_key and deepseek_api_key.strip():
         save_deepseek_config(
             api_key=deepseek_api_key.strip(),
             base_url=deepseek_base_url,
             model=deepseek_model,
         )
+        has_deepseek = True
+
+    if provider == "gemini":
+        if not gemini_key_new and not has_gemini_ws:
+            try:
+                from agents.llm_config import load_gemini_global_config
+
+                load_gemini_global_config()
+            except Exception:
+                raise ValueError("Please enter Gemini API Key (or add config/gemini.json)")
     elif not has_deepseek:
-        raise ValueError("请填写 DeepSeek API Key")
+        raise ValueError("Please enter DeepSeek API Key")
 
     if test_connection and needs_mysql:
         if sources:
@@ -1184,6 +1235,9 @@ def complete_setup(
         target_database=target,
         target_user=target_user,
         target_password=tgt_pwd if needs_mysql else None,
+        llm_provider=provider,
+        gemini_api_key=gemini_key_new or None,
+        gemini_model=gemini_model,
     )
     save_studio_state(alias)
     source_files = list_source_files(alias, verify_disk=True)
@@ -1388,7 +1442,7 @@ def stream_chat(
         set_skill_author_session(None)
 
     context, tools = prepare_skills(skill_ids)
-    agent = get_agent_backend(tool_runner=_run_tool)
+    agent = get_agent_backend(tool_runner=_run_tool, db_alias=alias)
     if mode == "skill_author":
         workspace_note = build_upload_context(skill_author_session).strip()
         if skill_author_session:

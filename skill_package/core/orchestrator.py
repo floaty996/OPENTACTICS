@@ -14,10 +14,10 @@ _CUSTOM_SKILLS_ROOT = Path(__file__).resolve().parents[2] / "config" / "custom_s
 
 
 class SkillPackageOrchestrator:
-    """掃描 system + custom skill 目錄，載入 SKILL.md；system 工具由 tools 子套件 import 時註冊。
+    """Scan system + custom skill dirs and load SKILL.md; tools register on import of tools subpackages.
 
-    若傳入 ``allowed_skill_ids``，則本實例只會掛載、摘要、啟用該白名單內的 skill，
-    適合「每個智能體各自一份可用 skill 列表」；未傳入時行為與先前相同（目錄下皆可見）。
+    When ``allowed_skill_ids`` is set, only whitelisted skills are mounted, summarized, and activated
+    (per-agent skill lists). When omitted, every skill under the roots is visible.
     """
 
     def __init__(
@@ -39,7 +39,7 @@ class SkillPackageOrchestrator:
         self._discover()
 
     def refresh_skills(self) -> None:
-        """重新扫描 skills 目录（新增 skill 目录后调用，无需重启进程）。"""
+        """Re-scan skills directories (call after adding a skill folder; no process restart)."""
         self._discover()
 
     def _discover(self) -> None:
@@ -52,7 +52,7 @@ class SkillPackageOrchestrator:
             if origin == "custom":
                 root.mkdir(parents=True, exist_ok=True)
             else:
-                logger.warning("Skill root 不存在: %s", root)
+                logger.warning("Skill root does not exist: %s", root)
             return
         for d in sorted(root.iterdir()):
             if not d.is_dir() or d.name.startswith("_"):
@@ -65,7 +65,7 @@ class SkillPackageOrchestrator:
             self.skills[skill_id] = Skill(skill_id=skill_id, path=d, origin=origin)
 
     def ensure_tools_loaded(self, skill_id: str) -> bool:
-        """動態 import skill_package.skills.<skill_id>.tools 以觸發 @register_skill_tool。"""
+        """Import skill_package.skills.<skill_id>.tools to trigger @register_skill_tool."""
         sk = self.skills.get(skill_id)
         if sk is None or sk.origin != "system":
             return False
@@ -77,14 +77,14 @@ class SkillPackageOrchestrator:
             self._loaded_tool_packages.add(skill_id)
             return True
         except ModuleNotFoundError:
-            logger.debug("Skill %s 無 tools 套件（可略過）", skill_id)
+            logger.debug("Skill %s has no tools package (ok to skip)", skill_id)
             return False
         except Exception:
-            logger.exception("載入 skill 工具失敗: %s", skill_id)
+            logger.exception("Failed to load tools for skill: %s", skill_id)
             return False
 
     def ensure_all_visible_tools_loaded(self) -> None:
-        """對本實例目前可見的每個 skill 執行 ensure_tools_loaded（多 skill 智能體一次準備）。"""
+        """ensure_tools_loaded for every skill visible to this orchestrator."""
         for sid in self.skills:
             self.ensure_tools_loaded(sid)
 
@@ -107,13 +107,13 @@ class SkillPackageOrchestrator:
 
     def get_skill_summary(self) -> str:
         if not self.skills:
-            return "（未發現任何 skill）"
+            return "(No skills discovered)"
         lines: list[str] = []
         for sid, sk in self.skills.items():
             desc = sk.description.replace("\n", " ")
             if len(desc) > 120:
                 desc = desc[:117] + "..."
-            tag = "系统" if sk.origin == "system" else "自定义"
+            tag = "system" if sk.origin == "system" else "custom"
             lines.append(f"- **{sid}** ({sk.name}, {tag}): {desc}")
         return "\n".join(lines)
 

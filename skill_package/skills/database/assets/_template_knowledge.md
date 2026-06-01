@@ -1,43 +1,43 @@
 ---
-db_alias: "{客户库别名}"
+db_alias: "{customer_db_alias}"
 generated_at: "{YYYY-MM-DD}"
-scope: "{本次整理范围，如：订单域全表 / 用户相关 5 表}"
-business_goal: "{用户描述的业务目标，原文或摘要}"
+scope: "{scope, e.g. full order domain / 5 user-related tables}"
+business_goal: "{user business goal, verbatim or summary}"
 ---
 
-# {主题标题}
+# {Topic title}
 
-## 1. 业务背景与目标
+## 1. Business context and goals
 
-- **业务场景**：
-- **本次要搞清楚的问题**：
-- **不在本次范围**：
+- **Business scenario**:
+- **Questions to answer this pass**:
+- **Out of scope**:
 
-## 2. 核心实体与表映射
+## 2. Core entities and table mapping
 
-| 业务实体 | 主表 | 说明 |
-|----------|------|------|
-| 例：用户 | users | 账号主数据 |
+| Business entity | Primary table | Notes |
+|-----------------|---------------|-------|
+| e.g. User | users | Account master data |
 
-## 3. 表结构摘要
+## 3. Table structure summary
 
 ### 3.1 `{table_name}`
 
-| 字段 | 类型 | 可空 | 键 | 业务含义 |
-|------|------|------|-----|----------|
-| id | bigint | N | PK | 主键 |
+| Column | Type | Nullable | Key | Business meaning |
+|--------|------|----------|-----|------------------|
+| id | bigint | N | PK | Primary key |
 
-**样本观察**（脱敏）：…
+**Sample observations** (redacted): …
 
-## 4. 数据关系
+## 4. Data relationships
 
-### 4.1 关系一览
+### 4.1 Relationship overview
 
-| 从表 | 从字段 | 到表 | 到字段 | 关系类型 | 依据 |
-|------|--------|------|--------|----------|------|
-| orders | user_id | users | id | N:1 | 字段命名 + 样本 |
+| From table | From column | To table | To column | Cardinality | Evidence |
+|------------|-------------|----------|-----------|-------------|----------|
+| orders | user_id | users | id | N:1 | naming + samples |
 
-### 4.2 ER 示意（Mermaid）
+### 4.2 ER diagram (Mermaid)
 
 ```mermaid
 erDiagram
@@ -52,17 +52,17 @@ erDiagram
   }
 ```
 
-## 5. 关键业务规则（从库结构推断）
+## 5. Key business rules (inferred from schema)
 
 - …
 
-## 6. 待确认 / 风险
+## 6. Open questions / risks
 
-- 无外键但命名暗示关联的表：…
-- 枚举/状态字段含义未在库内注释：…
+- Implied relations without FK: …
+- Enum/status meanings not documented in DB: …
 
-## 7. 附录
+## 7. Appendix
 
-- **连接信息**：`db_alias` / `db_type` / `database`（不含密码）
-- **分析过的表**：
-- **未覆盖的表**：
+- **Connection info**: `db_alias` / `db_type` / `database` (no passwords)
+- **Tables analyzed**:
+- **Tables not covered**:

@@ -1,3 +1,3 @@
-已迁移至 `skill_package/workspace/{db_alias}/frontend/`。
+Moved to `skill_package/workspace/{db_alias}/frontend/`.
 
-请使用 `save_ui_file(db_alias=..., project_name=..., file_path=...)` 写入新路径。
+Use `save_ui_file(db_alias=..., project_name=..., file_path=...)` to write to the new path.

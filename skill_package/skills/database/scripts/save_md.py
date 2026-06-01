@@ -12,18 +12,18 @@ save_md_schema = {
     "function": {
         "name": "save_markdown",
         "description": (
-            "整文件写入 dataset/ 下 .md 知识文档；新建或大改用。"
-            "小范围修改请优先 patch_markdown。"
+            "Write a full .md knowledge doc under dataset/; use for new files or large rewrites. "
+            "Prefer patch_markdown for small edits."
         ),
         "parameters": {
             "type": "object",
             "properties": {
-                "db_alias": {"type": "string", "description": "客户库别名"},
+                "db_alias": {"type": "string", "description": "Customer workspace alias"},
                 "file_path": {
                     "type": "string",
-                    "description": "相对 dataset/ 的路径，如 20260521_order_domain.md",
+                    "description": "Path relative to dataset/, e.g. 20260521_order_domain.md",
                 },
-                "content": {"type": "string", "description": "Markdown 正文"},
+                "content": {"type": "string", "description": "Markdown body"},
             },
             "required": ["db_alias", "file_path", "content"],
         },
@@ -35,8 +35,8 @@ patch_md_schema = {
     "function": {
         "name": "patch_markdown",
         "description": (
-            "按片段替换 dataset/ 下已有 .md 文件（old_string → new_string）。"
-            "修改前须先读取该文档并复制精确原文。"
+            "Replace a fragment in an existing .md under dataset/ (old_string → new_string). "
+            "Read the file first and copy the exact original text."
         ),
         "parameters": {
             "type": "object",
@@ -58,17 +58,17 @@ def _resolve_target(db_alias: str, file_path: str) -> Path:
     alias = validate_db_alias(db_alias)
     raw = file_path.strip().strip('"').strip("'")
     if not raw:
-        raise ValueError("file_path 不能为空。")
+        raise ValueError("file_path cannot be empty.")
     rel = Path(raw)
     if rel.is_absolute() or ".." in rel.parts:
-        raise ValueError("file_path 非法")
+        raise ValueError("Invalid file_path")
     if rel.parts and rel.parts[0] == "dataset":
         rel = Path(*rel.parts[1:])
     root = dataset_dir(alias).resolve()
     target = (root / rel).resolve()
     target.relative_to(root)
     if target.suffix.lower() != ".md":
-        raise ValueError(f"仅允许保存 .md 文件，当前扩展名: {target.suffix!r}")
+        raise ValueError(f"Only .md files allowed; got extension {target.suffix!r}")
     return target
 
 
@@ -76,7 +76,7 @@ def _resolve_target(db_alias: str, file_path: str) -> Path:
     "database",
     name="save_markdown",
     schema=save_md_schema,
-    alias=["保存md", "写入数据整理知识文档", "保存markdown"],
+    alias=["save_md", "write_knowledge_doc"],
 )
 def save_markdown(db_alias: str, file_path: str, content: str) -> str:
     try:
@@ -111,7 +111,7 @@ def save_markdown(db_alias: str, file_path: str, content: str) -> str:
     "database",
     name="patch_markdown",
     schema=patch_md_schema,
-    alias=["片段替换markdown", "patch_dataset_md"],
+    alias=["patch_dataset_md"],
 )
 def patch_markdown(
     db_alias: str,

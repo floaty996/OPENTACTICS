@@ -1,10 +1,9 @@
-"""backend skill 产出目录 → workspace/{db_alias}/backend/"""
+"""backend skill output → workspace/{db_alias}/backend/"""
 
 from skill_package.workspace.paths import (
     TEMPLATES_ROOT,
     WORKSPACE_ROOT,
     backend_dir,
-    config_path,
     ensure_workspace,
     validate_db_alias,
 )

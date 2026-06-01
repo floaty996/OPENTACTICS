@@ -1,4 +1,4 @@
-# backend skill 模板
+# backend skill templates
 
-- `_template_api_manifest.json` → 工程清单 `api_manifest.json`
-- 工作区模板：`skill_package/workspace/_templates/api_knowledge.md`
+- `_template_api_manifest.json` → project manifest `api_manifest.json`
+- Workspace template: `skill_package/workspace/_templates/api_knowledge.md`

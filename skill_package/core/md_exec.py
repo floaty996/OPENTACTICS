@@ -1,17 +1,18 @@
-"""从 Markdown 中抽取并执行「显式标记」的代码块，用执行输出替换块内容（仅内存）。
+"""Extract and run explicitly tagged code blocks from Markdown; replace blocks with output in memory.
 
-约定（避免误执行普通示例代码）：
-- 仅识别围栏第一行为 ``run-python`` 的代码块，例如::
+Convention (avoids running ordinary example code):
+- Only fences whose first line is ``run-python`` are executed, e.g.::
 
     ```run-python
     print(1 + 1)
     ```
 
-  执行后传给智能体的正文中，该围栏会被替换为纯文本输出（如 ``2``），
-  **不会**改写磁盘上的 SKILL.md。
+  After execution the fence in the agent context becomes plain output (e.g. ``2``).
+  **Disk SKILL.md is never modified.**
 
-安全说明：执行任意 Python 等同于在本机运行脚本，存在数据外泄与破坏风险。
-仅应在可信 SKILL、可信环境、且明确开启 ``execute_skill_blocks`` 时使用，并建议配合超时与只读任务。
+Security: running arbitrary Python is equivalent to executing scripts on this machine.
+Use only with trusted SKILL content, trusted environments, and explicit
+``execute_skill_blocks``; prefer timeouts and read-only tasks.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-# 与常见 ```python 示例区分，必须显式写 run-python 才会执行
+# Distinct from ```python examples; must say run-python to execute
 RUN_PYTHON_LANG = "run-python"
 
 _FENCE_RE = re.compile(
@@ -33,7 +34,7 @@ _FENCE_RE = re.compile(
 
 
 def iter_tagged_fences(markdown: str, fence_lang: str) -> list[str]:
-    """返回正文中所有语言标记为 ``fence_lang`` 的代码块内容（按出现顺序）。"""
+    """Return code bodies for all fences tagged ``fence_lang`` (in document order)."""
     want = fence_lang.strip().lower()
     out: list[str] = []
     for lang, body in _FENCE_RE.findall(markdown):
@@ -50,7 +51,7 @@ def run_python_snippet(
     cwd: Path | None = None,
     timeout: float = 30.0,
 ) -> str:
-    """用当前解释器在子进程中执行代码，返回 stdout/stderr 与退出码摘要。"""
+    """Run code in a subprocess with the current interpreter; return stdout/stderr summary."""
     fd, path = tempfile.mkstemp(suffix="_skill_exec.py", text=True)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -74,7 +75,7 @@ def run_python_snippet(
         return "\n".join(parts) if parts else "(no output)"
     except subprocess.TimeoutExpired:
         return f"[timeout after {timeout}s]"
-    except Exception as e:  # pragma: no cover - 极端环境
+    except Exception as e:  # pragma: no cover
         return f"[execution error] {e!s}"
     finally:
         try:
@@ -90,7 +91,7 @@ def collect_run_python_outputs(
     timeout: float = 30.0,
     fence_lang: str = RUN_PYTHON_LANG,
 ) -> list[str]:
-    """对每个标记块依次执行，返回与块顺序一致的输出文本列表。"""
+    """Run each tagged block; return outputs in block order."""
     return [
         run_python_snippet(block, cwd=cwd, timeout=timeout)
         for block in iter_tagged_fences(markdown, fence_lang)
@@ -104,11 +105,11 @@ def execute_and_inject_outputs(
     timeout: float = 30.0,
     fence_lang: str = RUN_PYTHON_LANG,
 ) -> tuple[str, list[str]]:
-    """执行标记代码块，用纯文本输出**替换**原围栏（不修改源文件，仅内存结果）。
+    """Run tagged blocks and **replace** each fence with plain-text output (memory only).
 
-    例如 `` ```run-python\\nprint(3)\\n``` `` 变为 ``3``。
+    e.g. `` ```run-python\\nprint(3)\\n``` `` becomes ``3``.
 
-    返回 ``(处理后的 markdown, 各块输出列表)``。
+    Returns ``(processed markdown, per-block output list)``.
     """
     want = fence_lang.strip().lower()
     outputs: list[str] = []

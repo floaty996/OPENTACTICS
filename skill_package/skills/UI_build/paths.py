@@ -1,4 +1,4 @@
-"""UI_build skill 产出目录 → workspace/{db_alias}/frontend/"""
+"""UI_build skill output → workspace/{db_alias}/frontend/"""
 
 from skill_package.workspace.paths import (
     TEMPLATES_ROOT,

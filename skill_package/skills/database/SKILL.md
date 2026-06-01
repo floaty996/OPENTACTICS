@@ -1,58 +1,60 @@
 ---
 name: database
 description: >-
-  连接客户数据库只读分析，将表结构与数据关系写入 skill_package/workspace/{db_alias}/dataset/。
-  先查 dataset 已有文档，不足再连库。与 UI_build 共用同一 workspace。
+  Read-only analysis of customer databases; write table structures and data
+  relationships to skill_package/workspace/{db_alias}/dataset/. Check existing
+  dataset docs first; connect to the database only when insufficient. Shares
+  workspace with UI_build.
 version: "1.4"
 ---
 
-## 目标
+## Goal
 
-为客户数据库建立**可复用的业务知识库**，并与 UI、配置等同处 **`workspace/{db_alias}/`**，便于多 skill 衔接。
+Build a **reusable business knowledge base** for customer databases, co-located with UI and config under **`workspace/{db_alias}/`** so multiple skills can chain together.
 
-## 源库 vs 目标库（必读）
+## Source vs target database (required reading)
 
-| 类型 | config 字段 | 连接方式 | 智能体权限 |
-|------|-------------|----------|------------|
-| **源库** | `source_databases`（可多个，**可留空**） | `database_connect(connection_mode="source", database="某源库", use_workspace_config=true)` | **只读**（SELECT/SHOW/DESCRIBE…） |
-| **源文件** | `source_files`（xlsx/csv，**可留空**） | `list_source_files` → `read_source_file(path=...)` | **只读**预览；整理后写入 `dataset/` |
-| **目标库** | `target_database`（唯一，**可留空**） | `database_connect(connection_mode="target", use_workspace_config=true)` | **可写**（CREATE/INSERT/ALTER…） |
-| **本地库** | `storage_mode: "local"`（未填目标库时自动） | 同上 `connection_mode="target"` → SQLite `workspace/{db_alias}/data/app.db` | **可写**（仅限该 SQLite 文件） |
+| Type | Config field | Connection | Agent permissions |
+|------|--------------|------------|-------------------|
+| **Source DB** | `source_databases` (multiple, **optional**) | `database_connect(connection_mode="source", database="...", use_workspace_config=true)` | **Read-only** (SELECT/SHOW/DESCRIBE…) |
+| **Source files** | `source_files` (xlsx/csv, **optional**) | `list_source_files` → `read_source_file(path=...)` | **Read-only** preview; write findings to `dataset/` |
+| **Target DB** | `target_database` (single, **optional**) | `database_connect(connection_mode="target", use_workspace_config=true)` | **Writable** (CREATE/INSERT/ALTER…) |
+| **Local DB** | `storage_mode: "local"` (when target is empty) | Same `connection_mode="target"` → SQLite `workspace/{db_alias}/data/app.db` | **Writable** (that SQLite file only) |
 
-- 整理资料：逐个连接各**源库**或读取 **source_files**，禁止对源库 DDL/DML；无源库/源文件时可跳过连库，直接写 dataset 或接本地 SQLite。
-- 建表/落库：连接 **目标库**（MySQL）或 **本地 SQLite**（`connection_mode=target`）。
-- 写操作前须 `read_database_config` 确认 `storage_mode` / `target_database`。
-- **`read_database_config` 返回的 `password: "***"` 仅为脱敏**；禁止把 `***` 传给 `save_database_config`。改密码须在 Studio 初始化页操作，或 `save_database_config` 传入真实密码。
+- **Document sources**: connect each **source DB** or read **source_files**; no DDL/DML on sources. If no sources, skip DB connect and write `dataset/` or use local SQLite.
+- **Create tables / persist data**: connect **target DB** (MySQL) or **local SQLite** (`connection_mode=target`).
+- Before writes, call `read_database_config` to confirm `storage_mode` / `target_database`.
+- **`password: "***"` in `read_database_config` is redacted**; never pass `***` to `save_database_config`. Change passwords in Studio init or pass real passwords via `save_database_config`.
 
-## 工作区结构（与 UI_build 共享）
+## Workspace layout (shared with UI_build)
 
 ```
 skill_package/workspace/{db_alias}/
-├── config.json       # source_databases + source_files + target_database（均可空）+ storage_mode + 账号
-├── dataset/          # 本 skill 写入：Markdown 知识文档
-├── source_files/     # Studio 上传的 xlsx/csv 源数据（只读）
-├── frontend/         # UI_build 写入
-└── manifest.json     # 产物索引
+├── config.json       # source_databases + source_files + target_database (all optional) + storage_mode
+├── dataset/          # This skill writes Markdown knowledge docs here
+├── source_files/     # Studio-uploaded xlsx/csv (read-only)
+├── frontend/         # UI_build writes here
+└── manifest.json     # Artifact index
 ```
 
-- 知识文档：`workspace/{db_alias}/dataset/{YYYYMMDD}_{主题}.md`
-- 模板：`skill_package/workspace/_templates/dataset_knowledge.md`
+- Knowledge docs: `workspace/{db_alias}/dataset/{YYYYMMDD}_{topic}.md`
+- Template: `skill_package/workspace/_templates/dataset_knowledge.md`
 
-### 路径快照（加载时自动更新）
+### Path snapshot (auto-updated on load)
 
 ```run-python
 from pathlib import Path
 import json
 
 ws = (Path.cwd().parent.parent / "workspace").resolve()
-print("【工具参数】")
+print("[Tool parameters]")
 print("  save_markdown / read_database_knowledge:")
-print("    db_alias=客户别名")
-print("    file_path=相对 dataset/，如 20260521_order_domain.md")
-print("  list_database_knowledge: db_alias 可省略（扫描全部工作区）")
+print("    db_alias=customer alias")
+print("    file_path=relative to dataset/, e.g. 20260521_order_domain.md")
+print("  list_database_knowledge: db_alias optional (scans all workspaces)")
 print()
 if not ws.is_dir():
-    print("（尚无 workspace 目录）")
+    print("(No workspace directory yet)")
 else:
     for alias_dir in sorted(ws.iterdir()):
         if not alias_dir.is_dir() or alias_dir.name.startswith("_"):
@@ -63,7 +65,7 @@ else:
         mds = sorted(ds.rglob("*.md"))
         if not mds:
             continue
-        print(f"【{alias_dir.name}】")
+        print(f"[{alias_dir.name}]")
         for p in mds:
             if p.name.startswith("_"):
                 continue
@@ -72,71 +74,72 @@ else:
         if mp.is_file():
             try:
                 man = json.loads(mp.read_text(encoding="utf-8"))
-                print(f"  manifest.projects: {len(man.get('projects') or [])} 个前端")
+                print(f"  manifest.projects: {len(man.get('projects') or [])} frontend project(s)")
             except Exception:
                 pass
 ```
 
-## 标准流程（SOP）
+## Standard workflow (SOP)
 
-### 0. 明确业务需求
+### 0. Clarify business requirements
 
-弄清业务目标、范围、关注点；`business_goal` / `scope` 写入文档 YAML 头。
+Understand goals, scope, and focus areas; put `business_goal` / `scope` in document YAML frontmatter.
 
-### 1. 先查 dataset（必做）
+### 1. Check dataset first (required)
 
-1. **`list_database_knowledge`**（建议传 `db_alias`）
-2. **`read_database_knowledge`**（`db_alias` + `file_name`）
-3. 不足或需刷新 → 步骤 2
+1. **`list_database_knowledge`** (pass `db_alias` when possible)
+2. **`read_database_knowledge`** (`db_alias` + `file_name`)
+3. If insufficient or refresh needed → step 2
 
-可选：**`read_workspace_manifest`**（UI_build 工具）查看同工作区是否已有 config/frontend。
+Optional: **`read_workspace_manifest`** (UI_build tool) to see existing config/frontend in the workspace.
 
-### 2. 连接客户数据库
+### 2. Connect to customer database
 
-**`database_connect`**（推荐 `use_workspace_config=true`）：
+**`database_connect`** (prefer `use_workspace_config=true`):
 
-| 场景 | 参数 |
-|------|------|
-| 整理源库 A | `connection_mode="source"`, `database="源库名"` |
-| 建表/写入 | `connection_mode="target"`（库名自动取 `target_database`） |
+| Scenario | Parameters |
+|----------|------------|
+| Document source DB A | `connection_mode="source"`, `database="source_db_name"` |
+| Create tables / write | `connection_mode="target"` (DB name from `target_database`) |
 
-**勿在回复中写密码**；结束 **`database_disconnect`**。
+**Never echo passwords in replies**; always **`database_disconnect`** when done.
 
-### 3. 只读探查
+### 3. Read-only exploration
 
-`list_tables` → `describe_table` → `database_query`（只读 SQL）；样本须脱敏。
+`list_tables` → `describe_table` → `database_query` (read-only SQL); sample rows must be redacted.
 
-### 4. 写入 dataset
+### 4. Write to dataset
 
-**`save_markdown`** 整文件写入；小改优先 **`patch_markdown`**（`old_string` / `new_string`）→ 更新 `manifest.json` 的 `knowledge_files`。
+**`save_markdown`** for full files; prefer **`patch_markdown`** (`old_string` / `new_string`) for small edits → update `manifest.json` `knowledge_files`.
 
-### 5. 收尾
+### 5. Wrap-up
 
-说明工作区路径、是否命中旧文档、未覆盖表及待确认项。
+Report workspace paths, whether existing docs were reused, uncovered tables, and open questions.
 
-若用户要 **完整业务系统**（不仅是知识文档），dataset 完成后须交接：
+If the user wants a **full business system** (not just docs), after dataset hand off to:
 
-1. **backend** skill：`save_backend_file` 写 API（含 `main.py`）
-2. **UI_build** skill：`save_ui_file` 写 `frontend/` 与 `preview.html`
-3. 收尾前 **`verify_fullstack_deliverables`**（backend 工具）
+1. **backend** skill: `save_backend_file` for API (including `main.py`)
+2. **UI_build** skill: `save_ui_file` for `frontend/` and `preview.html`
+3. Before closing: **`verify_fullstack_deliverables`** (backend tool)
 
-**禁止**在只写完 dataset 的情况下声称「前端/全栈已完成」。
+**Do not** claim frontend/full-stack is done after dataset only.
 
-## 工具一览
+## Tools
 
-| 工具 | 作用 |
-|------|------|
-| `list_database_knowledge` | 列举 dataset 下 md（可选 db_alias） |
-| `read_database_knowledge` | 读取 md |
-| `save_markdown` | 整文件保存 md |
-| `patch_markdown` | 片段替换已有 md |
-| `database_connect` / `database_disconnect` | 连库 / 断开 |
-| `list_tables` / `describe_table` / `database_query` | 只读探查 |
+| Tool | Purpose |
+|------|---------|
+| `list_database_knowledge` | List md files under dataset (optional db_alias) |
+| `read_database_knowledge` | Read md |
+| `save_markdown` | Save full md file |
+| `patch_markdown` | Patch existing md |
+| `database_connect` / `database_disconnect` | Connect / disconnect |
+| `list_tables` / `describe_table` / `database_query` | Read-only exploration |
+| `list_source_files` / `read_source_file` | Workspace xlsx/csv sources |
 
-## 依赖
+## Dependencies
 
-MySQL：`pymysql`；PostgreSQL：`psycopg2-binary`；SQLite：内置。
+MySQL: `pymysql`; PostgreSQL: `psycopg2-binary`; SQLite: built-in.
 
-## 编排层
+## Orchestration
 
-`ensure_tools_loaded("database")`。与 **UI_build** 协作时使用相同 **`db_alias`**。
+Call `ensure_tools_loaded("database")`. Use the same **`db_alias`** as **UI_build** when collaborating.

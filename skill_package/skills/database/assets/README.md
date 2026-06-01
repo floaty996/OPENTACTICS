@@ -1,3 +1,3 @@
-已迁移至 `skill_package/workspace/{db_alias}/dataset/`。
+Moved to `skill_package/workspace/{db_alias}/dataset/`.
 
-请使用 `save_markdown(db_alias=..., file_path=...)` 写入新路径。
+Use `save_markdown(db_alias=..., file_path=...)` to write to the new path.

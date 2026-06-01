@@ -1,4 +1,4 @@
-"""后端 API 知识文档：workspace/{db_alias}/backend/{project_name}/api_knowledge.md"""
+"""Backend API knowledge: workspace/{db_alias}/backend/{project_name}/api_knowledge.md"""
 
 from __future__ import annotations
 
@@ -19,8 +19,8 @@ read_schema = {
     "function": {
         "name": "read_api_knowledge",
         "description": (
-            "读取 workspace/{db_alias}/backend/{project_name}/api_knowledge.md，"
-            "含 REST 路由、请求/响应约定、与数据库表映射等。"
+            "Read workspace/{db_alias}/backend/{project_name}/api_knowledge.md "
+            "(REST routes, request/response, DB table mapping)."
         ),
         "parameters": {
             "type": "object",
@@ -38,15 +38,15 @@ save_schema = {
     "function": {
         "name": "save_api_knowledge",
         "description": (
-            "保存或更新 api_knowledge.md（Markdown，建议含 YAML frontmatter）。"
-            "在生成/迭代后端后，整理路由、鉴权、与 frontend 的对接说明。"
+            "Save or update api_knowledge.md (Markdown, YAML frontmatter recommended). "
+            "After backend changes, document routes, auth, and frontend integration."
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "db_alias": {"type": "string"},
                 "project_name": {"type": "string"},
-                "content": {"type": "string", "description": "完整 Markdown 内容"},
+                "content": {"type": "string", "description": "Full Markdown content"},
             },
             "required": ["db_alias", "project_name", "content"],
         },
@@ -67,8 +67,8 @@ def read_api_knowledge(db_alias: str, project_name: str) -> str:
             return json.dumps(
                 {
                     "ok": False,
-                    "error": f"api_knowledge.md 不存在: backend/{project_name}/",
-                    "hint": "生成后端后请用 save_api_knowledge 创建并维护 API 知识文档。",
+                    "error": f"api_knowledge.md not found: backend/{project_name}/",
+                    "hint": "After generating the backend, use save_api_knowledge to create and maintain the API doc.",
                 },
                 ensure_ascii=False,
             )
@@ -99,7 +99,7 @@ def save_api_knowledge(db_alias: str, project_name: str, content: str) -> str:
             return json.dumps(
                 {
                     "ok": False,
-                    "error": f"后端工程不存在: backend/{project_name}/，请先 save_backend_file 创建工程。",
+                    "error": f"Backend project not found: backend/{project_name}/. Use save_backend_file first.",
                 },
                 ensure_ascii=False,
             )

@@ -86,6 +86,9 @@ class SetupRequest(BaseModel):
     deepseek_api_key: str | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
+    llm_provider: str = "deepseek"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.0-flash"
     test_connection: bool = True
 
 
@@ -415,6 +418,9 @@ async def api_setup(body: SetupRequest):
             deepseek_api_key=body.deepseek_api_key,
             deepseek_base_url=body.deepseek_base_url,
             deepseek_model=body.deepseek_model,
+            llm_provider=body.llm_provider,
+            gemini_api_key=body.gemini_api_key,
+            gemini_model=body.gemini_model,
             test_connection=body.test_connection,
         )
     except Exception as e:

@@ -5,15 +5,15 @@ describe_schema = {
     "type": "function",
     "function": {
         "name": "describe_table",
-        "description": "获取指定表的结构（字段、类型、是否可空、主键等）。须先 database_connect。",
+        "description": "Get table structure (columns, types, nullability, keys). Requires database_connect first.",
         "parameters": {
             "type": "object",
             "properties": {
                 "connection_id": {
                     "type": "string",
-                    "description": "database_connect 返回的连接 id",
+                    "description": "Connection id returned by database_connect",
                 },
-                "table_name": {"type": "string", "description": "表名"},
+                "table_name": {"type": "string", "description": "Table name"},
             },
             "required": ["connection_id", "table_name"],
         },
@@ -25,7 +25,7 @@ describe_schema = {
     "database",
     name="describe_table",
     schema=describe_schema,
-    alias=["表结构", "字段说明"],
+    alias=["table_schema", "column_info"],
 )
 def describe_table_tool(connection_id: str, table_name: str) -> str:
     return describe_table(connection_id, table_name)
